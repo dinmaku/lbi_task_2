@@ -61,6 +61,13 @@ export default {
   methods: {
     async handleLogin() {
         try {
+
+           // Log the request
+            console.log('Sending login request with:', {
+                email: this.email,
+                password: '***'
+            });
+
           const response = await axios.post('http://127.0.0.1:5000/login', {
             email: this.email,
             password: this.password,
@@ -79,10 +86,10 @@ export default {
             // Store user profile
             if (response.data.user) {
               const userProfile = response.data.user;
-              localStorage.setItem('userProfile', JSON.stringify(userProfile));
-              localStorage.setItem('firstName', userProfile.firstname || '');
-              localStorage.setItem('lastName', userProfile.lastname || '');
-              localStorage.setItem('username', userProfile.email || '');
+              localStorage.setItem('user_id', userProfile.user_id) || sessionStorage.setItem('user_id', userProfile.user_id);
+              localStorage.setItem('email', userProfile.email) || sessionStorage.setItem('email', userProfile.email);
+              localStorage.setItem('user_type', userProfile.user_type);
+              localStorage.setItem('access_token', access_token);
               console.log('Stored user profile:', userProfile);
             }
 

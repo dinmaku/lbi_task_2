@@ -1,7 +1,16 @@
 <template>
+  <div class="h-[70px] bg-gray-100 flex items-center shadow-xl px-[20px] w-full py-[10px] z-10 shadow-md">
+        <div class="w-full flex justify-between items-center">
+          <h1 class="font-inter text-3xl font-bold">User Management</h1>
+          <button class = "mr-2 w-32 h-9 bg-[#27A9F5] rounded-sm font-semibold text-gray-200
+          transition-transform duration-300 transform hover:scale-105 cursor-pointer " @click="showInactivUsersModal">Inactive Users</button>
+        </div>
+  </div>
+
 <div class="p-6 overflow-y-auto">
+  
 <!-- Alert Modal -->
-    <div v-if="showAlert" class="fixed inset-0 bg-gray-800/20 overflow-y-auto flex justify-center items-center z-50">
+    <div v-if="showAlert" class="fixed inset-0 bg-gray-800/20 overflow-y-auto flex justify-center items-center z-999">
       <div :class="['bg-white p-5 rounded-lg shadow-lg w-[400px] border-l-4', alertType === 'success' ? 'border-green-500' : 'border-red-500']">
         <div class="flex justify-between items-center mb-4">
           <h3 :class="['text-lg font-semibold', alertType === 'success' ? 'text-green-600' : 'text-red-600']">
@@ -17,12 +26,81 @@
       </div>
     </div>
 
+    <!-- Status Confirmation Modal -->
+        <div v-if="showStatusConfirmModal" @click.self="closeStatusConfirmModal" class="fixed inset-0 bg-gray-800/20 overflow-y-auto flex justify-center items-center z-100">
+          <div class="bg-white p-5 rounded-lg shadow-lg w-[400px]">
+            <div class="flex flex-col items-center">
+              <h2 class="text-xl font-semibold mb-4">Confirm Status Change</h2>
+              <p class="mb-6 text-center">Are you sure you want to change the user status?</p>
+              <div class="flex space-x-4">             
+                <button 
+                  @click="closeStatusConfirmModal" 
+                  class="bg-gray-500 text-white px-4 py-2 rounded hover:bg-opacity-90 cursor-pointer transfomr-transition duration-300 transform hover:scale-105">
+                  Cancel
+                </button>
+                <button 
+                  @click="confirmStatusChange" 
+                  class = "w-20 h-10 bg-blue-500 text-gray-100 font-semibold rounded-lg shadow-md cursor-pointer transform-transition duration-300 transform hover:scale-105">
+                  Yes
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+
+
+        <!-- Inactive Users Modal -->
+        <div v-if="showInactiveUsersModal" @click.self="closeInactiveUsersModal" class="fixed inset-0 bg-gray-800/20 overflow-y-auto flex justify-center items-center z-50">
+          <div class="bg-white p-5 rounded-lg shadow-lg w-[1000px]">
+            <div class="flex justify-between items-center mb-4">
+              <h2 class="text-xl font-semibold">Inactive Users</h2>
+              <button @click="closeInactiveUsersModal" class="text-gray-500 hover:text-gray-700 cursor-pointer">
+                <span class="text-2xl">&times;</span>
+              </button>
+            </div>
+
+            <div class="overflow-x-auto">
+              <table class="w-full text-sm text-left text-gray-500">
+                <thead class="text-xs text-gray-700 uppercase bg-gray-50">
+                  <tr>
+                    <th scope="col" class="w-16 px-2 py-3">#</th>
+                    <th scope="col" class="w-52 px-2 py-3">Name</th>
+                    <th scope="col" class="w-52 px-2 py-3">Email</th>
+                    <th scope="col" class="w-40 px-2 py-3">Contact</th>
+                    <th scope="col" class="w-36 px-2 py-3">Address</th>
+                    <th scope="col" class="w-28 px-2 py-3">Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="(user, index) in inactiveUsers" :key="user.user_id" 
+                      class="bg-white border-b hover:bg-gray-50">
+                    <td class="px-6 py-4">{{ index + 1 }}</td>
+                    <td class="w-52 px-2 py-3 truncate">{{ user.firstName }} {{ user.lastName }}</td>
+                    <td class="w-52 px-2 py-3 truncate">{{ user.email }}</td>
+                    <td class="w-40 px-2 py-3 truncate">{{ user.contact }}</td>
+                    <td class="w-36 px-2 py-3 truncate">{{ user.address}}</td>
+                    <td class="px-6 py-4">
+                      <button
+                        class="p-2 hover:opacity-80 transform hover:scale-110 transition-transform duration-200 cursor-pointer"
+                        @click="toggleUserStatus(user)"
+                        title="Set User to Active">
+                        <img src="../assets/icons/activate.png" alt="Set Active" class="w-5 h-5">
+                      </button>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
   <div class="flex flex-row items-center m-5 space-x-5">
         <div class="flex justify-start w-52 h-20 bg-white rounded-lg shadow-lg px-2 items-center border-l-2 border-blue-400 space-x-5">
-            <h2 class="font-inter text-4xl font-bold mb-0"> {{ totalStaffsPages }} <span class = "text-sm antialiased text-gray-600">staff</span></h2>
+            <h2 class="font-inter text-4xl font-bold mb-0"> {{ staffs.length }} <span class = "text-sm antialiased text-gray-600">staff</span></h2>
         </div>
         <div class="flex justify-start w-52 h-20 bg-white rounded-lg shadow-lg px-2 items-center border-l-2 border-blue-400 space-x-5">
-            <h2 class="font-inter text-4xl font-bold mb-0"> {{ totalAdminPages }} <span class = "text-sm antialiased text-gray-600">admin</span></h2>
+            <h2 class="font-inter text-4xl font-bold mb-0"> {{ admins.length }} <span class = "text-sm antialiased text-gray-600">admin</span></h2>
         </div>
         <form class="flex items-center w-[300px] mt-9">
               <label for="voice-search" class="sr-only">Search</label>
@@ -94,6 +172,12 @@
             <img src="../assets/icons/edit.png" alt="Update" class="w-5 h-5">
            
               </button>
+            <button class="p-2 hover:opacity-80 transform hover:scale-110 transition-transform duration-200 cursor-pointer" 
+            @click="openStatusConfirmModal(staff)" 
+            title="Set User to Inactive">
+            <img src="../assets/icons/deactivate.png" alt="Update" class="w-5 h-5">
+           
+              </button>
           </td>
         </tr>
       </tbody>
@@ -134,7 +218,7 @@
             :key="admin.no"
             class="border-b dark:border-gray-700 odd:bg-white odd:dark:bg-gray-900 even:bg-gray-50 even:dark:bg-gray-800">
           <th scope="row" class="w-16 px-2 py-3 font-inter text-gray-900 whitespace-nowrap dark:text-white">{{ admin.dummyIndex }}</th>
-          <td class="w-52 px-2 py-3 truncate">{{ admin.fisrtName }} {{ admin.lastName }}</td>
+          <td class="w-52 px-2 py-3 truncate">{{ admin.firstName }} {{ admin.lastName }}</td>
           <td class="w-52 px-2 py-3 truncate">{{ admin.email }}</td>
           <td class="w-40 px-2 py-3 truncate">{{ admin.contact }}</td>
           <td class="w-36 px-2 py-3 truncate">{{ admin.address }}</td>
@@ -144,6 +228,12 @@
             @click="openUpdateUserForm(index)" 
             title="Update Admin Info">
             <img src="../assets/icons/edit.png" alt="Update" class="w-5 h-5">
+           
+              </button>
+            <button class="p-2 hover:opacity-80 transform hover:scale-110 transition-transform duration-200 cursor-pointer" 
+            @click="openStatusConfirmModal(admin)" 
+            title="Set User to Inactive">
+            <img src="../assets/icons/deactivate.png" alt="Update" class="w-5 h-5">
            
               </button>
           </td>
@@ -202,7 +292,7 @@
       <!-- Contact Number -->
       <div class="flex flex-col  mt-5">
         <input type="text" class="mt-1 p-2 w-full h-12 rounded-lg text-sm shadow-sm border border-gray-500/20 focus:outline-none focus:border-blue-700"
-         v-model="contact" placeholder="Contact Number" required>
+         v-model="contact" placeholder="Contact Number" maxlength="11" required>
       </div>
 
       <!-- Address -->
@@ -269,7 +359,7 @@
       <!-- Contact Number -->
       <div class="flex flex-col  mt-5">
         <input type="text" class="mt-1 p-2 w-full h-12 rounded-lg text-sm shadow-sm border border-gray-500/20 focus:outline-none focus:border-blue-700"
-         v-model="selectedUser.contact" placeholder="Contact Number">
+         v-model="selectedUser.contact" placeholder="Contact Number" maxlenght="11">
       </div>
 
       <!-- Address -->
@@ -288,7 +378,7 @@
       </div>
       <!-- Confirm Button -->
       <div class="flex justify-end items-center mt-5 space-x-2">
-          <button class="bg-gray-300 text-white w-20 h-10 rounded-lg transform-transition duration-300 transform hover:scale-105 hover:bg-gray-400 cursor-pointer" @click="closeAddUserForm">
+          <button class="bg-gray-300 text-white w-20 h-10 rounded-lg transform-transition duration-300 transform hover:scale-105 hover:bg-gray-400 cursor-pointer" @click="closeUpdateUserForm">
           Cancel
         </button>
         <button type="submit" class="w-20 h-10 bg-blue-500 text-gray-100 font-semibold rounded-lg shadow-md transform-transition duration-300 transform hover:scale-105 cursor-pointer">
@@ -321,6 +411,8 @@ export default {
       adminsPerPage: 5,
 
       addUserForm: false,
+      pendingUser: null,
+      showStatusConfirmModal: false,
 
       firstname: '',
       lastname: '',
@@ -330,13 +422,15 @@ export default {
       address: '',
       errorMessage: '',
       selectedUserType: '',
+      status: '',
 
       showAlert: false,
-      alertType: 'success', // 'success' or 'error'
+      alertType: 'success',
       alertMessage: '',
 
       staffs: [],
       admins: [],
+      inactiveUsers: [],
 
       updateUserForm: false,
       selectedUser: {
@@ -346,8 +440,11 @@ export default {
         username: '',
         contact: '',
         address: '',
-        user_type: ''
-      }
+        user_type: '',
+        status: ''
+      },
+
+      showInactiveUsersModal: false,
 
       
 
@@ -356,7 +453,6 @@ export default {
     };
   },
   computed: {
-  
         filteredStaffs() {
           return this.staffs.filter(staff => 
             staff.fullName?.toLowerCase().includes(this.searchAccount.toLowerCase()) ||
@@ -372,6 +468,7 @@ export default {
         },
 
         totalStaffsPages() {
+          
           return Math.ceil(this.filteredStaffs.length / this.staffsPerPage);
         },
 
@@ -395,7 +492,7 @@ export default {
             ...admin,
             dummyIndex: start + index + 1
           })).slice(start, end);
-        }
+        },
       },
   methods: {
    
@@ -435,7 +532,14 @@ export default {
 
     async handleRegister() {
             try {
-                // Validate required fields
+                const userType = localStorage.getItem('user_type') || sessionStorage.getItem('user_type');
+                if (userType !== 'admin') {
+                    this.showErrorAlert('Only admins can add new users.');
+                    this.resetRegisterForm();
+                    this.closeAddUserForm();
+                    return;
+                }
+                
                 const fields = [
                     this.username, this.email, this.firstname, this.lastname,
                     this.contact, this.address,
@@ -446,11 +550,11 @@ export default {
                     return;
                 }
 
-                // Automatically set registerPassword to match username if username is provided
+                
                 if (this.username) {
                     this.registerPassword = this.username;
                 }
-                // Prepare the data payload
+               
                 const requestData = {
                     email: this.email,
                     username: this.username,
@@ -460,18 +564,20 @@ export default {
                     address: this.address,
                     password: this.registerPassword,
                     user_type: this.selectedUserType,
+                    status: 'Active' 
                 };
 
-                // Send the request to the backend
+                
                 const response = await axios.post(`${this.baseURL}/addAccount`, requestData);
 
                 if (response.status === 201) {
                     this.showSuccessAlert('User added successfully!');
-                    this.resetRegisterForm(); // Reset the form after success
+                    await this.fetchUsers();
+                    this.resetRegisterForm(); 
                     this.closeAddUserForm();
                 }
             } catch (error) {
-                // Handle error feedback
+                
                 if (error.response?.data?.message) {
                     this.showErrorAlert(error.response.data.message);
                 } else {
@@ -483,9 +589,9 @@ export default {
         resetRegisterForm() {
             this.email = '';
             this.username = '';
-            this.firstName = '';
-            this.lastName = '';
-            this.contactNumber = '';
+            this.firstname = '';
+            this.lastname = '';
+            this.contact = '';
             this.address = '';
             this.registerPassword = '';
             this.selectedUserType = '';
@@ -495,35 +601,58 @@ export default {
 
 
     async fetchUsers() {
-      try {
-          const token = localStorage.getItem('access_token');
-          if (!token) {
-              console.error('No token found');
-              return;
-          }
+        try {
+            const token = sessionStorage.getItem('access_token');
+            if (!token) {
+                console.error('No token found');
+                this.$router.push('/'); 
+                return;
+            }
 
-          const response = await axios.get(`${this.baseURL}/users`, {
-              headers: {
-                  'Authorization': `Bearer ${token}`,
-                  'Content-Type': 'application/json'
-              }
-          });
+            const response = await axios.get(`${this.baseURL}/users`, {
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                }
+            });
 
-          if (response.data) {
-              console.log('API Response:', response.data); // Debug log
-              // Filter users by type
-              this.admins = response.data.filter(user => user.user_type.toLowerCase() === 'admin');
-              this.staffs = response.data.filter(user => user.user_type.toLowerCase() === 'staff');
-              console.log('Filtered Admins:', this.admins); // Debug log
-              console.log('Filtered Staff:', this.staffs); // Debug log
-          }
-      } catch (error) {
-          console.error('Error fetching users:', error);
-          if (error.response) {
-              console.error('Error response:', error.response.data);
-          }
-      }
+            if (response.data) {
+                console.log('API Response:', response.data);
+                
+                // Get the current logged-in user's ID or email
+                const loggedInUserId = sessionStorage.getItem('user_id'); 
+                const loggedInUserEmail = sessionStorage.getItem('email'); 
+
+                // Filter users by status = 'Active'
+                const activeUsers = response.data.filter(user => user.status === 'Active');
+
+                // Exclude the logged-in user from the list
+                const filteredActiveUsers = activeUsers.filter(user => 
+                    user.user_id !== loggedInUserId && user.email !== loggedInUserEmail
+                );
+
+                // Separate admins and staff based on user_type
+                this.admins = filteredActiveUsers.filter(user => user.user_type.toLowerCase() === 'admin');
+                this.staffs = filteredActiveUsers.filter(user => user.user_type.toLowerCase() === 'staff');
+                
+                console.log('Filtered Active Admins:', this.admins);
+                console.log('Filtered Active Staff:', this.staffs);
+            }
+        } catch (error) {
+            console.error('Error fetching users:', error);
+            if (error.response?.status === 401) {
+                localStorage.removeItem('access_token');
+                sessionStorage.removeItem('acess_token');
+                this.$router.push('/'); 
+                console.error('Error response:', error.response.data);
+            }
+        }
+    },
+
+    getAuthToken() {
+      return localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
   },
+
 
 
     showSuccessAlert(message) {
@@ -542,19 +671,19 @@ export default {
     },
 
     openUpdateUserForm(index) {
-    // Get the correct user based on which table is shown
+    
     const user = this.showTable === 'Staffs' ? this.staffs[index] : this.admins[index];
     
-    // Create a copy of the user data to avoid direct mutation
+    
     this.selectedUser = {
-        user_id: user.user_id, // Ensure user_id is included
-        firstname: user.firstname || user.firstName, // handle both cases
-        lastname: user.lastname || user.lastName,   // handle both cases
+        user_id: user.user_id, 
+        firstname: user.firstname || user.firstName, 
+        lastname: user.lastname || user.lastName,   
         email: user.email,
         username: user.username,
         contact: user.contact,
         address: user.address,
-        user_type: user.user_type // Changed from selectedUserType
+        user_type: user.user_type 
     };
     
     this.updateUserForm = true;
@@ -566,6 +695,15 @@ export default {
 
     async updateUserAccount() {
       try {
+
+        const userType = localStorage.getItem('user_type') || sessionStorage.getItem('user_type');
+                if (userType !== 'admin') {
+                    this.showErrorAlert('Only admins can update users.');
+                    this.closeUpdateUserForm();
+                    return;
+         }
+
+
         const token = localStorage.getItem('access_token');
         if (!token) {
           console.error('No token found');
@@ -590,7 +728,7 @@ export default {
         if (response.status === 200) {
           this.showSuccessAlert('User updated successfully!');
           this.closeUpdateUserForm();
-          this.fetchUsers(); // Refresh the user list
+          this.fetchUsers(); 
         }
       } catch (error) {
         console.error('Error updating user:', error);
@@ -603,11 +741,109 @@ export default {
           this.showErrorAlert('An error occurred. Please try again.');
         }
       }
-    }
+    },
+
+    openStatusConfirmModal(user) {
+        this.pendingUser = user;
+        this.showStatusConfirmModal = true;
+      },
+
+      toggleUserStatus(user) {
+          this.pendingUser = user;
+          this.showStatusConfirmModal = true;
+        },
+
+     async confirmStatusChange() {
+          try {
+            const userType = localStorage.getItem('user_type') || sessionStorage.getItem('user_type');
+                if (userType !== 'admin') {
+                    this.showErrorAlert('Only admins can change user status.');
+                    return;
+            }
+
+
+            if (!this.pendingUser) {
+              console.error('No user selected for status change');
+              return;
+            }
+
+            const token = localStorage.getItem('access_token');
+            if (!token) {
+              console.error('No token found');
+              return;
+            }
+
+            const newStatus = this.pendingUser.status === 'Active' ? 'Inactive' : 'Active';
+
+            const response = await axios.put(
+              `${this.baseURL}/update_status/${this.pendingUser.user_id}`,
+              { status: newStatus },
+              {
+                headers: {
+                  'Authorization': `Bearer ${token}`,
+                  'Content-Type': 'application/json'
+                }
+              }
+            );
+
+            if (response.status === 200) {
+              this.showSuccessAlert(`User status changed to ${newStatus}`);
+              await this.fetchUsers(); 
+              await this.fetchInactiveUsers(); 
+              this.closeStatusConfirmModal();
+            }
+          } catch (error) {
+            console.error('Error toggling user status:', error);
+            this.showErrorAlert(error.response?.data?.message || 'Error updating user status');
+            this.closeStatusConfirmModal();
+          }
+        },
+
+      closeStatusConfirmModal() {
+        this.showStatusConfirmModal = false;
+      },
+
+
+      async fetchInactiveUsers() {
+        try {
+          const token = localStorage.getItem('access_token');
+          if (!token) {
+            console.error('No token found');
+            return;
+          }
+
+          const response = await axios.get('http://127.0.0.1:5000/inactive_users', {
+            headers: {
+              Authorization: `Bearer ${token}`, 
+            },
+          });
+
+          if (response.status === 200) {
+            this.inactiveUsers = response.data.inactive_users; 
+            console.log('Fetched inactive users:', this.inactiveUsers);
+          }
+        } catch (error) {
+          console.error('Error fetching inactive users:', error);
+          if (error.response) {
+            this.showErrorAlert(error.response.data.message);
+          } else {
+            this.showErrorAlert('Error fetching inactive users. Please try again.');
+          }
+        }
+      },
+
+      showInactivUsersModal() {
+        this.showInactiveUsersModal = true;
+      },
+
+      closeInactiveUsersModal() {
+        this.showInactiveUsersModal = false;
+      },
 
 },
   mounted(){
     this.fetchUsers();
+    this.fetchInactiveUsers();
 
     this.$watch('showTable', () => {
     this.fetchUsers();

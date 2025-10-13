@@ -20,7 +20,6 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['SECRET_KEY'] = 'access_token'
 
 
-# Add logging configuration
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
@@ -38,6 +37,7 @@ class Users(db.Model):
     contact = db.Column(db.String(225), nullable=True)
     address = db.Column(db.String(225), nullable=True)
     user_type = db.Column(db.String(255), nullable=True) 
+    status = db.Column(db.String(50), nullable=True, default='Active')
 
     def serialize(self):
         return {
@@ -48,7 +48,8 @@ class Users(db.Model):
             'email': self.email,
             'contact': self.contact,
             'address': self.address,
-            'user_type': self.user_type
+            'user_type': self.user_type,
+            'status': self.status
         }
 
 #Login Route
@@ -57,19 +58,29 @@ def login():
     data = request.get_json()
     email = data.get('email')
     password = data.get('password')
+    status = 'Active'
 
     if not email or not password:
         return jsonify({"error": "Email and password are required"}), 400
 
     user = Users.query.filter_by(email=email).first()
 
+    if user.status != 'Active':
+        return jsonify({"error": "User account is inactive"}), 403
+
+
+     # Verify password
+
     if not user or not check_password_hash(user.password, password):
         return jsonify({"error": "Invalid email or password"}), 401
+
+        
 
     # Generate JWT
     token_payload = {
         'user_id': user.user_id,
         'email': user.email,
+        'user_type': user.user_type,
         'exp': datetime.datetime.utcnow() + datetime.timedelta(hours=2)  # expires in 2 hours
     }
 
@@ -111,6 +122,7 @@ def add_account():
         contact = data.get('contact', '').strip()
         address = data.get('address', '').strip()
         user_type = data.get('user_type', '').strip()
+        status = 'Active'
 
         # Validate required fields
         if not all([email, firstname, lastname, username, password, contact, address, user_type]):
@@ -139,7 +151,8 @@ def add_account():
                 password=hashed_password,
                 contact=contact,
                 address=address,
-                user_type=user_type
+                user_type=user_type,
+                status=status
             )
             db.session.add(new_user)
             db.session.commit()
@@ -182,14 +195,14 @@ def edit_staff(userid):
             logger.warning(f"User not found: {userid}")
             return jsonify({"message": "User not found"}), 404
 
-        # Check for duplicate email
+      
         if data['email'] != user.email:
             existing = Users.query.filter_by(email=data['email']).first()
             if existing:
                 logger.warning(f"Email already exists: {data['email']}")
                 return jsonify({"message": "Email already exists"}), 400
 
-        # Update fields
+       
         user.firstname = data['firstname'].strip()
         user.lastname = data['lastname'].strip()
         user.username = data['username'].strip()
@@ -210,7 +223,60 @@ def edit_staff(userid):
         db.session.rollback()
         logger.info(f"Received data: {data}")
         logger.error(f"Error updating user: {e}")
-        return jsonify({"message": "Internal server error"}), 500 
+        return jsonify({"message": "Internal server error"}), 500
+
+@app.route('/update_status/<int:userid>', methods=['PUT'])
+def update_status(userid):
+    try:
+        data = request.get_json(force=True, silent=True) or {}
+        new_status = data.get('status', '').strip()
+
+        if new_status not in ['Active', 'Inactive']:
+            logger.warning(f"Invalid status value: {new_status}")
+            return jsonify({"message": "Invalid status value"}), 400
+
+        user = Users.query.get(userid)
+        if not user:
+            logger.warning(f"User not found: {userid}")
+            return jsonify({"message": "User not found"}), 404
+
+        user.status = new_status
+        db.session.commit()
+
+        logger.info(f"User status updated successfully: {user.email} to {new_status}")
+        return jsonify({
+            "message": "User status updated successfully",
+            "user": user.serialize()
+        }), 200
+
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f"Error updating user status: {e}")
+        return jsonify({"message": "Internal server error"}), 500
+
+
+@app.route('/inactive_users', methods=['GET'])
+def get_inactive_users():
+    try:
+        
+        inactive_users = Users.query.filter_by(status='Inactive').all()
+        
+       
+        logger.info(f"Found {len(inactive_users)} inactive users")
+        
+        
+        serialized_users = [user.serialize() for user in inactive_users]
+        
+        return jsonify({
+            'message': 'Inactive users retrieved successfully',
+            'inactive_users': serialized_users
+        }), 200
+        
+    except Exception as e:
+        logger.error(f"Error fetching inactive users: {str(e)}")
+        return jsonify({
+            'error': 'Failed to fetch inactive users'
+        }), 500
 
 
 

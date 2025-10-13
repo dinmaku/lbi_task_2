@@ -46,14 +46,9 @@
       </div>
     </div>
 
-    <!-- Headbar + Content -->
+    <!-- Main Content Area -->
     <div class="w-full h-full bg-[#50E3C2] text-center">
-      <div class="h-[70px] bg-gray-100 flex items-center shadow-xl px-[20px] w-full py-[10px] z-10 shadow-md">
-        <div class="w-full flex justify-center">
-          <!-- Optional: Add title/logo here -->
-        </div>
-      </div>
-
+      
       <!-- Router view (main content area) -->
       <div class="min-h-[calc(100vh-50px)] h-full bg-[#F7FDFF] overflow-y-auto">
         <router-view />
@@ -89,14 +84,21 @@
 </template>
 
 <script>
+import ManageUsers from './manage_users.vue';
+
+
 export default {
   name: 'DefaultLayout',
+  components: {
+    ManageUsers,
+  },
   data() {
     return {
       logoutModal: false,
 
     };
   },
+
   methods: {
     showLogoutConfirmModal() {
       this.logoutModal = true;
@@ -105,7 +107,9 @@ export default {
       this.logoutModal = false;
     },
     logout() {
-      localStorage.removeItem('authToken');
+      localStorage.removeItem('access_token');
+      localStorage.removeItem('user_type');
+      sessionStorage.removeItem('access_token');
       this.$router.push('/');
     },
   },
