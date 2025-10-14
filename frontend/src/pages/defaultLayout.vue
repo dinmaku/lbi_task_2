@@ -12,22 +12,32 @@
         <div class = "flex flex-col space-y-[10px]">
           <router-link
             to="/dashboard"
+            active-class="bg-white text-gray-900 whitespace-nowrap"
             class="inline-flex items-center py-[20px] px-[10px] w-full text-md font-interBold font-semibold rounded-md border-gray-200 hover:bg-white hover:text-gray-900 transition duration-400 ease-in-out group whitespace-nowrap"
           >
             <img
             aria-hidden="true"
-            class="mr-2 w-[30px] h-[30px] transition duration-300 ease-in-out group-hover:brightness-0"
+            class="mr-2 w-[30px] h-[30px] transition duration-300 ease-in-out"
+            :class="{'brightness-0': isActive('/dashboard'),
+                      'group-hover:brightness-0': true
+
+            }"
             src="../assets/icons/dashboard.png"
             />
             Dashboard
           </router-link>
           <router-link
             to="/manage-users"
+            active-class="bg-white text-gray-900 whitespace-nowrap"
             class="inline-flex items-center py-[20px] px-[10px] w-full text-md font-interBold font-semibold rounded-md border-gray-200 hover:bg-white hover:text-gray-900 transition duration-400 ease-in-out group whitespace-nowrap"
           >
             <img
             aria-hidden="true"
-            class="mr-2 w-[30px] h-[30px] transition duration-300 ease-in-out group-hover:brightness-0"
+            class="mr-2 w-[30px] h-[30px] transition duration-300 ease-in-out"
+            :class="{'brightness-0': isActive('/manage-users'),
+                      'group-hover:brightness-0': true
+
+            }"
             src="../assets/icons/manage_users.png"
             />
             Manage Users
@@ -112,6 +122,9 @@ export default {
       sessionStorage.removeItem('access_token');
       this.$router.push('/');
     },
+    isActive(route) {
+      return this.$route.path === route;
+    }
   },
 };
 </script>
