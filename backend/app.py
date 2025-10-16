@@ -5,11 +5,14 @@ from flask import request, jsonify
 from werkzeug.security import check_password_hash
 from werkzeug.security import generate_password_hash
 from sqlalchemy import LargeBinary
+from werkzeug.utils import secure_filename
 import base64
 import jwt
 import datetime
 import re
 import logging
+import os
+
 
 
 app = Flask(__name__)
@@ -18,6 +21,15 @@ CORS(app, supports_credentials=True, origins=["http://localhost:5173"])
 app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql+pg8000://postgres:1234@localhost/lbi_user_management'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['SECRET_KEY'] = 'access_token'
+
+# ✅ Define UPLOAD_FOLDER after app is created
+UPLOAD_FOLDER = os.path.join(app.root_path, 'static', 'uploads')
+app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+
+# Make sure the folder exists
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+
+
 
 
 logging.basicConfig(level=logging.INFO)
@@ -38,6 +50,7 @@ class Users(db.Model):
     address = db.Column(db.String(225), nullable=True)
     user_type = db.Column(db.String(255), nullable=True) 
     status = db.Column(db.String(50), nullable=True, default='Active')
+    image = db.Column(db.String(225), nullable=True)
 
     def serialize(self):
         return {
@@ -49,7 +62,8 @@ class Users(db.Model):
             'contact': self.contact,
             'address': self.address,
             'user_type': self.user_type,
-            'status': self.status
+            'status': self.status,
+            'image': self.image
         }
 
 #Login Route
@@ -81,7 +95,7 @@ def login():
         'user_id': user.user_id,
         'email': user.email,
         'user_type': user.user_type,
-        'exp': datetime.datetime.utcnow() + datetime.timedelta(hours=2)  # expires in 2 hours
+        'exp': datetime.datetime.utcnow() + datetime.timedelta(hours=10)  
     }
 
     token = jwt.encode(token_payload, app.config['SECRET_KEY'], algorithm='HS256')
@@ -98,6 +112,166 @@ def get_users():
     users = Users.query.all()
     return jsonify([user.serialize() for user in users]), 200
 
+#Fetch User Profile
+@app.route('/users/profile', methods=['GET'])
+def get_user_profile():
+    auth_header = request.headers.get('Authorization')
+    if not auth_header or not auth_header.startswith('Bearer '):
+        return jsonify({'status': 'error', 'message': 'Missing or invalid token'}), 401
+
+    token = auth_header.split(' ')[1]
+
+    try:
+        decoded = jwt.decode(token, app.config['SECRET_KEY'], algorithms=['HS256'])
+        current_user_id = decoded['user_id']
+    except jwt.ExpiredSignatureError:
+        return jsonify({'status': 'error', 'message': 'Token expired'}), 401
+    except jwt.InvalidTokenError:
+        return jsonify({'status': 'error', 'message': 'Invalid token'}), 401
+
+    user = Users.query.get(current_user_id)
+    if user:
+        return jsonify({'status': 'success', 'data': user.serialize()}), 200
+    else:
+        return jsonify({'status': 'error', 'message': 'User not found'}), 404
+
+#Update User Profile
+@app.route('/api/admin/update-profile', methods=['PUT'])
+def update_profile():
+    auth_header = request.headers.get('Authorization')
+    if not auth_header or not auth_header.startswith('Bearer '):
+        return jsonify({'status': 'error', 'message': 'Missing or invalid token'}), 401
+
+    token = auth_header.split(' ')[1]
+
+    try:
+        decoded = jwt.decode(token, app.config['SECRET_KEY'], algorithms=['HS256'])
+        user_id = decoded['user_id']
+    except jwt.ExpiredSignatureError:
+        return jsonify({'status': 'error', 'message': 'Token expired'}), 401
+    except jwt.InvalidTokenError:
+        return jsonify({'status': 'error', 'message': 'Invalid token'}), 401
+
+    user = Users.query.get(user_id)
+    if not user:
+        return jsonify({'status': 'error', 'message': 'User not found'}), 404
+
+    data = request.get_json()
+    user.firstname = data.get('firstname', user.firstname)
+    user.lastname = data.get('lastname', user.lastname)
+    user.username = data.get('username', user.username)
+    user.contact = data.get('contact', user.contact)
+    user.address = data.get('address', user.address)
+
+    try:
+        db.session.commit()
+        return jsonify({'status': 'success', 'message': 'Profile updated successfully'}), 200
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'status': 'error', 'message': 'Failed to update profile'}), 500
+
+#Change Password
+@app.route('/api/admin/change-password', methods=['POST'])
+def change_password():
+    auth_header = request.headers.get('Authorization')
+    if not auth_header or not auth_header.startswith('Bearer '):
+        return jsonify({'status': 'error', 'message': 'Missing or invalid token'}), 401
+
+    token = auth_header.split(' ')[1]
+
+    try:
+        decoded = jwt.decode(token, app.config['SECRET_KEY'], algorithms=['HS256'])
+        user_id = decoded['user_id']
+    except jwt.ExpiredSignatureError:
+        return jsonify({'status': 'error', 'message': 'Token expired'}), 401
+    except jwt.InvalidTokenError:
+        return jsonify({'status': 'error', 'message': 'Invalid token'}), 401
+
+    data = request.get_json()
+    current_password = data.get('current_password')
+    new_password = data.get('new_password')
+
+    user = Users.query.get(user_id)
+    if not user:
+        return jsonify({'status': 'error', 'message': 'User not found'}), 404
+
+    if not check_password_hash(user.password, current_password):
+        return jsonify({'status': 'error', 'message': 'Current password is incorrect'}), 400
+
+    user.password = generate_password_hash(new_password)
+
+    try:
+        db.session.commit()
+        return jsonify({'status': 'success', 'message': 'Password changed successfully'}), 200
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'status': 'error', 'message': 'Failed to change password'}), 500        
+
+#Upload Profile Picture
+ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
+def allowed_file(filename):
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
+@app.route('/update-profile-picture', methods=['POST'])
+def update_profile_picture():
+    auth_header = request.headers.get('Authorization')
+    if not auth_header or not auth_header.startswith('Bearer '):
+        print('❌ Missing or invalid token')
+        return jsonify({'status': 'error', 'message': 'Missing or invalid token'}), 401
+
+    token = auth_header.split(' ')[1]
+    try:
+        decoded = jwt.decode(token, app.config['SECRET_KEY'], algorithms=['HS256'])
+        user_id = decoded['user_id']
+        print('✅ Token decoded, user_id:', user_id)
+    except jwt.ExpiredSignatureError:
+        print('❌ Token expired')
+        return jsonify({'status': 'error', 'message': 'Token expired'}), 401
+    except jwt.InvalidTokenError:
+        print('❌ Invalid token')
+        return jsonify({'status': 'error', 'message': 'Invalid token'}), 401
+
+    if 'profile_image' not in request.files:
+        print('❌ No image file provided')
+        return jsonify({'status': 'error', 'message': 'No image file provided'}), 400
+
+    file = request.files['profile_image']
+    if file.filename == '' or not allowed_file(file.filename):
+        print('❌ Invalid file type:', file.filename)
+        return jsonify({'status': 'error', 'message': 'Invalid file type'}), 400
+
+    os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
+    filename = secure_filename(file.filename)
+    filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+    print('📁 Saving file to:', filepath)
+
+    try:
+        file.save(filepath)
+    except Exception as e:
+        print('❌ File save error:', e)
+        return jsonify({'status': 'error', 'message': 'Failed to save image'}), 500
+
+    user = Users.query.get(user_id)
+    if not user:
+        print('❌ User not found')
+        return jsonify({'status': 'error', 'message': 'User not found'}), 404
+
+    user.image = filename
+    try:
+        db.session.commit()
+        image_url = f"/static/uploads/{filename}"
+        return jsonify({
+            'status': 'success',
+            'data': {
+                'image_url': image_url
+            }
+        }), 200
+    except Exception as e:
+        print('❌ DB commit error:', e)
+        db.session.rollback()
+        return jsonify({'status': 'error', 'message': 'Failed to update profile picture'}), 500
+
+
 #Add Account
 def is_valid_email(email):
     pattern = r'^[\w\.-]+@[\w\.-]+\.\w+$'
@@ -107,6 +281,7 @@ def is_valid_email(email):
 def add_account():
     try:
         data = request.get_json()
+        default_image = '../assets/img/default_profile.png'
         if not data:
             return jsonify({"error": "No data provided"}), 400
 
@@ -122,7 +297,8 @@ def add_account():
         contact = data.get('contact', '').strip()
         address = data.get('address', '').strip()
         user_type = data.get('user_type', '').strip()
-        status = 'Active'
+        status = 'Active',
+        image = data.get('image', default_image).strip()
 
         # Validate required fields
         if not all([email, firstname, lastname, username, password, contact, address, user_type]):
@@ -152,7 +328,8 @@ def add_account():
                 contact=contact,
                 address=address,
                 user_type=user_type,
-                status=status
+                status=status,
+                image=image
             )
             db.session.add(new_user)
             db.session.commit()

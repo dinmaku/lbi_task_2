@@ -15,6 +15,7 @@ with app.app_context():
     contact = "1234567890"
     address = "123 Test Street"
     user_type = "admin"
+    status = "Active"
 
     existing_user = Users.query.filter_by(email=email).first()
     if existing_user:
@@ -30,6 +31,7 @@ with app.app_context():
             contact=contact,
             address=address,
             user_type=user_type
+            status=status
         )
         db.session.add(new_user)
         db.session.commit()
