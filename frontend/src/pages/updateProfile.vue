@@ -1,5 +1,5 @@
 <template>
-  <div class="min-h-screen bg-gray-100 pt-32 pb-10 px-4 sm:px-6 lg:px-8">
+  <div class="min-h-screen bg-gray-100 pt-32 pb-10 px-4 sm:px-6 lg:px-8 overflow-y-auto">
     <div class="max-w-4xl mx-auto">
       <!-- Error Message -->
       <div v-if="error" class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-6">
@@ -59,13 +59,13 @@
           <div class="text-center mb-6 space-x-4">
             <button 
               @click="toggleEditMode" 
-              class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+              class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors cursor-pointer"
             >
               {{ editMode ? 'Cancel' : 'Edit Profile' }}
             </button>
       <button
               @click="togglePasswordMode" 
-              class="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors"
+              class="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors cursor-pointer"
       >
               {{ passwordMode ? 'Cancel' : 'Change Password' }}
       </button>
@@ -108,13 +108,13 @@
                 <button 
                   type="button" 
                   @click="passwordMode = false" 
-                  class="px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50"
+                  class="px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button 
                   type="submit" 
-                  class="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700"
+                  class="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 cursor-pointer"
                   :disabled="changingPassword"
                 >
                   {{ changingPassword ? 'Changing Password...' : 'Change Password' }}
@@ -206,13 +206,13 @@
         <button
                   type="button" 
                   @click="editMode = false" 
-                  class="px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50"
-        >
+                  class="px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 cursor-pointer"
+        > 
           Cancel
         </button>
         <button
                   type="submit" 
-                  class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+                  class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 cursor-pointer"
                   :disabled="saving"
         >
                   {{ saving ? 'Saving...' : 'Save Changes' }}
