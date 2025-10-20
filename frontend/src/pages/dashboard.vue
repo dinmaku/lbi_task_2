@@ -10,7 +10,7 @@
                     <path fill-rule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clip-rule="evenodd"></path>
                   </svg>
                 </div>
-                <input type="text" id="search-bar" class="bg-white border font-inter border-gray-400 text-gray-900 text-sm rounded-xl focus:ring-blue-500 focus:border-blue-500 block w-full pl-10 p-2.5  dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500" placeholder="Search here" required v-model="searchAccount">
+                <input type="text" id="search-bar" class="bg-white border font-inter border-gray-400 text-gray-900 text-sm rounded-xl focus:ring-blue-500 focus:border-blue-500 block w-full pl-10 p-2.5  dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500" placeholder="Search here">
                 <router-link to="/" class="flex absolute inset-y-0 right-0 items-center pr-3">
                   <svg aria-hidden="true" class="w-4 h-4 text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
                   </svg>
@@ -61,77 +61,142 @@
           </div>
 
         <div class="grid grid-cols-3 gap-10 mt-10">
-           <div v-for="(card, index) in cardInfo" :key="index" class="w-[300px] h-[320px] bg-white border border-gray-300 rounded-lg shadow-md p-5 
-           transition-transform duration-300 transform hover:scale-105 cursor-pointer" @click="">
-               <div class="h-9 w-22 bg-red-100 rounded-full mb-4 flex items-center justify-center">
-                 <span class="text-red-600 text-xs font-semibold">{{ card.task_type }}</span >
-               </div>
+            <div
+              v-for="(card, index) in cardInfo"
+              :key="card.task_id"
+              class="w-[300px] h-[320px] bg-white border border-gray-300 rounded-lg shadow-md p-5 transition-transform duration-300 transform hover:scale-105 cursor-pointer"
+              @click=""
+            >
+              <div class="h-9 w-22 bg-red-100 rounded-full mb-4 flex items-center justify-center">
+                <span class="text-red-600 text-xs font-semibold">
+                  {{ card.task_type.task_type_name }}
+                </span>
+              </div>
               <h2 class="text-lg font-semibold mb-4">{{ card.title }}</h2>
               <p class="text-gray-600 line-clamp-3 w-64">{{ card.description }}</p>
               <p class="text-blue-600 font-semibold mt-2">{{ card.status }}</p>
-              <p class="text-gray-600 text-sm font-semibold mt-5">Created at: <span class="text-gray-900">{{ card.create_at }}</span></p>
-              <hr class ="my-5 border-gray-300">
+              <p class="text-gray-600 text-sm font-semibold mt-5">
+                Created at: <span class="text-gray-900">{{ card.created_at }}</span>
+              </p>
+              <hr class="my-5 border-gray-300" />
               <div class="flex justify-between items-center">
                 <div class="flex items-center">
-                  <img src="/img/default_profile.png" alt="Avatar" class="w-8 h-8 rounded-full mr-2">
-                  
+                  <div
+                    v-for="user in card.users"
+                    :key="user.user_id"
+                    class="relative group"
+                  >
+                    <img
+                      :src="getUserAvatar(user)"
+                      :alt="user.firstName"
+                      class="w-8 h-8 rounded-full mr-2"
+                      :title="user.firstName + ' ' + user.lastName"
+                    />
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
-         
           
-
-     </div> 
-   </div>
-     
     
   </div>
 
-      <div class="flex flex-col text-start space-y-2 overflow-y-hidden">
-        <label for="" class="text-2xl font-semibold py-5 text-gray-600">Create a new task</label>
-        <div class="bg-gray-200/70 w-[550px] h-[620px] rounded-xl shadow-md p-10">
-          <div class="flex flex-col space-y-2">
-             <label for="" class="font-semibold text-lg text-gray-700">Title</label>
-             <input type="text" class="w-2/3 h-10 border-b border-gray-400 outline-none" placeholder="Enter a comprehensive task title">
-             <label for="" class="font-semibold text-lg text-gray-700 mt-3">Task type </label>
-               <div class="grid grid-cols-4 gap-y-2">
-                 <button v-for="(type, index) in taskType" :key="index" class="rounded-full w-28 h-8 flex justify-center items-center cursor-pointer" :class="getColorClass(type.title)">
-                      <p class="text-sm text-white font-semibold">{{ type.title }}</p>
-                 </button>
-                <button @click="showAddTaskType" class="ml-1 h-8 w-8 bg-gray-300 rounded-full flex justify-center items-center cursor-pointer translate-transform duration-300 transform hover:scale-110">
-                  <span class="text-2xl font-semibold leading-none mb-[5px]">+</span>
+      <form @submit.prevent="createTask" class="flex flex-col text-start space-y-2 overflow-y-hidden">
+          <label for="" class="text-2xl font-semibold py-5 text-gray-600">Create a new task</label>
+          <div class="bg-gray-200/70 w-[550px] h-[620px] rounded-xl shadow-md p-10">
+            <div class="flex flex-col space-y-2">
+              <label for="" class="font-semibold text-lg text-gray-700">Title</label>
+              <input
+                type="text"
+                class="w-2/3 h-10 border-b border-gray-400 outline-none"
+                placeholder="Enter a comprehensive task title"
+                v-model="title"
+              />
+
+              <label for="" class="font-semibold text-lg text-gray-700 mt-3">Task type</label>
+              <div class="grid grid-cols-4 gap-3">
+                <button
+                  v-for="(type, index) in taskTypes"
+                  :key="type.task_type_id || index"
+                  @click="selectTaskType(type)"
+                  type="button"
+                  class="rounded-full w-28 h-8 flex justify-center items-center cursor-pointer transition-transform duration-300 transform hover:scale-105"
+                  :class="[
+                    getColorClass(type.task_type_name),
+                    selectedTaskType === type.task_type_id ? 'ring-2 ring-offset-2 ring-blue scale-105' : 'opacity-90'
+                  ]"
+                >
+                  <p class="text-sm text-white font-semibold truncate">
+                    {{ type.task_type_name }}
+                  </p>
                 </button>
-               </div>
+
+                <!-- Add button -->
+                <button
+                  type="button"
+                  @click="showAddTaskType"
+                  class="h-8 w-8 bg-gray-300 rounded-full flex justify-center items-center cursor-pointer transition-transform duration-300 transform hover:scale-110"
+                >
+                  <span class="text-2xl font-semibold leading-none mb-[7px]">+</span>
+                </button>
+              </div>
+
               <label for="" class="font-semibold text-lg text-gray-700 mt-3">Description</label>
-              <textarea name="" id="" class="w-2/3 h-30 bg-white border-none rounded-lg shadow-md outline-none p-3" placeholder="Enter a task description"></textarea>
+              <textarea
+                name=""
+                id=""
+                class="w-2/3 h-30 bg-white border-none rounded-lg shadow-md outline-none p-3"
+                placeholder="Enter a task description"
+                v-model="description"
+              ></textarea>
 
-              <label for="" class="font-semibold text-lg text-gray-700 mt-3">Assign to</label>
-               <select class="w-2/3 h-10 bg-white rounded-lg shadow-md text-md font-semibold outline-none cursor-pointer appearance-none p-2">
-                 <option value="" disabled selected class="text-gray-500 text-semibold">Select a user</option>
-                 <option value="" >John Doe</option>
-                 <option value="" >Pedro Penduko</option>
-                 <option value="" >Katrina Lim</option>
-                 <option value="" >Chris Gulpan</option>
-               </select>
+              <!-- Assign Section -->
+               <div class = "flex flex-row items-center space-x-2">
+              <label class="font-semibold text-lg text-gray-700 mt-3">Assigned to</label>
+              <button
+                  @click="openAssignModal"
+                  type="button"
+                  class="h-6 w-6 bg-gray-300 rounded-full flex justify-center items-center cursor-pointer transition-transform duration-300 transform hover:scale-110 mt-3"
+                >
+                  <span class="text-2xl font-semibold leading-none mb-[7px]">+</span>
+                </button>
+              </div>
+              <div class="flex -space-x-3 mb-3">
+                <div
+                  v-for="userId in selectedUserIds"
+                  :key="userId"
+                  class="relative group"
+                >
+                  <img
+                    :src="getUserAvatar(users.find(u => u.user_id === userId))"
+                    :alt="getUserName(userId)"
+                    class="w-10 h-10 rounded-full border-2 border-white shadow-md cursor-pointer transition-transform duration-300 hover:scale-110"
+                    :title="getUserName(userId)"
+                  />
+                </div>
+              </div>
 
-               <div class="flex justify-center items-center mt-5">
-                  <button class="bg-blue-400 text-center text-lg font-semibold h-10 w-full rounded-lg
-                   shadow-md cursor-pointer translate-transform duration-300 transform hover:scale-105">Create Task</button>
+        
+              <div class="flex justify-center items-center mt-5">
+                <button
+                  type="submit"
+                  class="bg-blue-400 text-center text-lg font-semibold h-10 w-full rounded-lg shadow-md cursor-pointer translate-transform duration-300 transform hover:scale-105"
+                >
+                  Create Task
+                </button>
+              </div>
             </div>
           </div>
-
-          
-         
-          
-        </div>    
-      </div>
+        </form>
   </div>
+  
  
        
-        <div v-if="AddTaskType" @click.self="closeAddTaskType" class="fixed inset-0 bg-gray-800/30 overflow-y-auto flex justify-center items-center z-100">
+        <div v-if="AddTaskTypeForm" @click.self="closeAddTaskType" class="fixed inset-0 bg-gray-800/30 overflow-y-auto flex justify-center items-center z-100">
           <div class="bg-white p-5 rounded-lg shadow-lg w-[400px]">
             <div class="flex flex-col items-center space-y-8">
               <h2 class="text-xl font-semibold mb-4">Add New Task Type</h2>
-               <input type="text" class="w-3/4 h-10 rounded-lg shadow-md p-2 border-none bg-gray-100" placeholder="Enter task type">
+               <input v-model="newTaskTypeName" type="text" class="w-3/4 h-10 rounded-lg shadow-md p-2 border-none bg-gray-100" placeholder="Enter task type">
               <div class="flex space-x-4">             
                 <button 
                   @click="closeAddTaskType" 
@@ -139,7 +204,7 @@
                   Cancel
                 </button>
                 <button 
-                  @click="confirmStatusChange" 
+                  @click.prevent="addTaskType"
                   class = "w-20 h-10 bg-blue-500 text-gray-100 font-semibold rounded-lg shadow-md cursor-pointer transform-transition duration-300 transform hover:scale-105">
                   Save
                 </button>
@@ -147,136 +212,369 @@
             </div>
           </div>
         </div>
-  
+
+    <!-- Alert Modal -->
+    <div v-if="showAlert" class="fixed inset-0 bg-gray-800/20 overflow-y-auto flex justify-center items-center z-999">
+      <div :class="['bg-white p-5 rounded-lg shadow-lg w-[400px] border-l-4', alertType === 'success' ? 'border-green-500' : 'border-red-500']">
+        <div class="flex justify-between items-center mb-4">
+          <h3 :class="['text-lg font-semibold', alertType === 'success' ? 'text-green-600' : 'text-red-600']">
+            {{ alertType === 'success' ? 'Success' : 'Error' }}
+          </h3>
+        </div>
+        <p class="text-gray-700">{{ alertMessage }}</p>
+        <div class="flex justify-end mt-4">
+          <button @click="closeAlert" class="px-4 py-2 bg-gray-100 text-gray-700 rounded hover:bg-gray-200 cursor-pointer">
+            Close
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Assign Task Modal -->
+      <div
+        v-if="showAssignModal"
+        @click.self="closeAssignModal"
+        class="fixed inset-0 bg-gray-800/40 flex justify-center items-center z-50"
+      >
+        <div class="bg-white rounded-lg shadow-lg w-[450px] p-6 space-y-5">
+          <h2 class="text-xl font-semibold text-gray-800">Assign Task</h2>
+
+          <p class="text-sm text-gray-500 mb-2">
+            Select users for: <span class="font-semibold">{{ title || 'New Task' }}</span>
+          </p>
+
+          <!-- User list -->
+          <div class="max-h-60 overflow-y-auto border rounded-lg p-3 space-y-2">
+            <div
+              v-for="user in users"
+              :key="user.user_id"
+              class="flex items-center space-x-2"
+            >
+              <input
+                type="checkbox"
+                :id="'user-' + user.user_id"
+                :value="user.user_id"
+                v-model="selectedUserIds"
+                class="cursor-pointer w-4 h-4 text-blue-600 border-gray-300 rounded"
+              />
+              <label :for="'user-' + user.user_id" class="cursor-pointer text-gray-700">
+                {{ user.firstName }} {{ user.lastName }}
+              </label>
+            </div>
+          </div>
+
+          <!-- Buttons -->
+          <div class="flex justify-end space-x-3 mt-4">
+            <button
+              @click="closeAssignModal"
+              class="px-4 py-2 bg-gray-300 text-gray-800 rounded hover:bg-gray-400 transition cursor-pointer"
+            >
+              Cancel
+            </button>
+            <button
+              @click="confirmAssignUsers"
+              class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition cursor-pointer"
+            >
+              Assign
+            </button>
+          </div>
+        </div>
+      </div>
+        
  
 
   </div>
 </template>
 
 <script>
+import axios from 'axios';
+const COLORS = [
+  'bg-blue-600',
+  'bg-green-600',
+  'bg-purple-600',
+  'bg-pink-600',
+  'bg-yellow-500',
+  'bg-orange-500',
+  'bg-red-600',
+  'bg-teal-600',
+  'bg-indigo-600',
+  'bg-gray-500'
+];
 
 export default {
   name: 'Dashboard',
   data() {
     return {
+      baseURL: 'http://127.0.0.1:5000',
       cardInfo: [],
-      taskType: [
-        {title: 'Bug'},
-        {title: 'UI Design'},
-        {title: 'Improvement'},
-        {title: 'Data Entry'},
-        {title: 'Feature'},
-      ],
-      AddTaskType: false,
+      taskTypes: [],
+      AddTaskTypeForm: false,
+      colorMap: {},
+      selectedTaskType: null,
+      newTaskTypeName: '',
+      showAlert: false,
+      alertMessage: '',
+      alertType: '',
+      users: [],              
+      selectedUserIds: [],    
+      showAssignModal: false,
+      title: '',
+      description: '',
     };
   },
-  methods: {
-     loadDummyCards() {
-      this.cardInfo = [
-        {
-          task_type: 'Bug',
-          title: 'Fix login issue',
-          description: 'Users cannot log in with correct credentials.',
-          status: 'Open',
-          create_at: '2025-10-17 09:00'
-        },
-        {
-          task_type: 'Feature',
-          title: 'Add dark mode',
-          description: 'Implement dark mode toggle for dashboard.',
-          status: 'In Progress',
-          create_at: '2025-10-16 14:30'
-        },
-        {
-          task_type: 'Improvement',
-          title: 'Optimize image loading',
-          description: 'Compress and lazy-load dashboard images.',
-          status: 'Completed',
-          create_at: '2025-10-15 11:45'
-        },
-        {
-          task_type: 'Bug',
-          title: 'Fix sidebar collapse',
-          description: 'Sidebar does not collapse on mobile view.',
-          status: 'Open',
-          create_at: '2025-10-14 08:20'
-        },
-        {
-          task_type: 'Feature',
-          title: 'Add user roles',
-          description: 'Implement role-based access control.',
-          status: 'In Progress',
-          create_at: '2025-10-13 10:00'
-        },
-        {
-          task_type: 'Improvement',
-          title: 'Improve search speed',
-          description: 'Optimize backend queries for faster search.',
-          status: 'Completed',
-          create_at: '2025-10-12 13:15'
-        },
-        {
-          task_type: 'Bug',
-          title: 'Fix notification badge',
-          description: 'Badge count does not update in real-time.',
-          status: 'Open',
-          create_at: '2025-10-11 16:45'
-        },
-        {
-          task_type: 'Feature',
-          title: 'Add export to CSV',
-          description: 'Allow users to export data tables to CSV.',
-          status: 'In Progress',
-          create_at: '2025-10-10 09:30'
-        },
-        {
-          task_type: 'Improvement',
-          title: 'Refactor auth module',
-          description: 'Clean up and modularize authentication logic.',
-          status: 'Completed',
-          create_at: '2025-10-09 12:00'
-        },
-        {
-          task_type: 'Bug',
-          title: 'Fix avatar upload',
-          description: 'Image upload fails for large files.',
-          status: 'Open',
-          create_at: '2025-10-08 15:10'
-        }
-      ]
+    mounted() {
+      this.fetchTasks();
+      this.fetchTaskTypes();
+      this.fetchUsers();
     },
+  methods: {
+    
 
    getColorClass(title) {
-      switch (title) {
-        case 'Bug':
-          return 'bg-blue-800 focus:outline focus:outline-2 focus:outline-blue-700';
-        case 'UI Design':
-          return 'bg-red-500 focus:outline focus:outline-2 focus:outline-red-700';
-        case 'Improvement':
-          return 'bg-purple-500 focus:outline focus:outline-2 focus:outline-purple-700';
-        case 'Data Entry':
-          return 'bg-yellow-500 focus:outline focus:outline-2 focus:outline-yellow-700'
-        case 'Feature':
-          return 'bg-orange-500 focus:outline focus:outline-2 focus:outline-orange-700'
-        default:
-          return 'bg-gray-500 focus:outline focus:outline-2 focus:outline-blue-500'; // optional fallback
-      }
+      if (this.colorMap[title]) return this.colorMap[title];
+      const randomColor = COLORS[Math.floor(Math.random() * COLORS.length)];
+      this.colorMap[title] = randomColor;
+      return randomColor;
     },
+
+
     showAddTaskType() {
-      this.AddTaskType = true;
+      this.AddTaskTypeForm = true;
     },
 
     closeAddTaskType()
     {
-      this.AddTaskType = false;
+      this.AddTaskTypeForm = false;
     },
 
-  
+ async fetchTaskTypes() {
+        try {
+          const token = sessionStorage.getItem('access_token');
+          if (!token) {
+            console.error('No token found');
+            this.$router.push('/'); 
+            return;
+          }
+
+          const response = await axios.get(`${this.baseURL}/task_types`, {
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Content-Type': 'application/json'
+            }
+          });
+
+          // ✅ store the result (make sure `taskTypes` exists in your data() or state)
+          this.taskTypes = response.data;
+
+          console.log('Task types fetched:', this.taskTypes);
+        } catch (error) {
+          console.error('Error fetching task types:', error);
+        }
+      },
+      selectTaskType(type) {
+          this.selectedTaskType = this.selectedTaskType === type.task_type_id ? null : type.task_type_id;
+        },
+
+    async addTaskType() {
+          try {
+            const token = sessionStorage.getItem('access_token');
+            if (!token) {
+              console.error('No token found');
+              this.$router.push('/');
+              return;
+            }
+
+            // Example: get task type name from an input field or modal
+            const newTypeName = this.newTaskTypeName?.trim();
+            if (!newTypeName) {
+              this.showAlertMessage('No task type name provided');
+              return;
+            }
+
+            const response = await axios.post(
+              `${this.baseURL}/add_task_type`,
+              { task_type_name: newTypeName },
+              {
+                headers: {
+                  'Authorization': `Bearer ${token}`,
+                  'Content-Type': 'application/json',
+                },
+              }
+            );
+
+            if (response.data.message) {
+              this.showAlertMessage('success', response.data.message);
+            }
+
+
+            // Optional: refresh your task type list
+            await this.fetchTaskTypes();
+
+            // Clear input or close modal
+            this.newTaskTypeName = '';
+            this.AddTaskTypeForm = false;
+
+          } catch (error) {
+            console.error('Error adding task type:', error);
+            this.showAlertMessage('error', 'Failed to add task type. Please try again.');
+          }
+        },
+
+        showAlertMessage(type, message) {
+          this.alertType = type;
+          this.alertMessage = message;
+          this.showAlert = true;
+        },
+        closeAlert() {
+          this.showAlert = false;
+          this.alertMessage = '';
+          this.alertType = '';
+        },
+
+        async fetchUsers() {
+          try {
+            const token = sessionStorage.getItem('access_token');
+            if (!token) return console.error('No token found');
+
+            const response = await axios.get(`${this.baseURL}/users`, {
+              headers: { 'Authorization': `Bearer ${token}` }
+            });
+            this.users = response.data;
+          } catch (error) {
+            console.error('Error fetching users:', error);
+          }
+        },
+
+       openAssignModal() {
+          this.showAssignModal = true;
+        },
+
+        closeAssignModal() {
+          this.showAssignModal = false;
+        },
+
+        confirmAssignUsers() {
+          // just close modal (don’t send to DB yet)
+          this.showAssignModal = false;
+        },
+        getUserName(userId) {
+            const user = this.users.find((u) => u.user_id === userId);
+            return user ? `${user.firstName} ${user.lastName}` : "Unknown";
+          },
+
+          getUserAvatar(user) {
+            // Check if user has a preview (e.g., selected before saving)
+            if (user.previewImage) {
+              return user.previewImage;
+            }
+
+            // Use uploaded image if available
+            const img = user.image;
+            if (img && img.trim() !== '') {
+              return img.startsWith('http')
+                ? img
+                : `http://localhost:5000/static/uploads/${img}`;
+            }
+
+            // Default placeholder
+            return '/img/default_profile.png';
+          },
+
+
+          async createTask() {
+              // Prevent duplicate submissions
+              if (this.isSubmitting) return;
+              this.isSubmitting = true;
+
+              try {
+                const token = sessionStorage.getItem('access_token');
+                if (!token) {
+                  console.error('No token found');
+                  this.$router.push('/');
+                  return;
+                }
+
+                // Validate inputs
+                if (!this.title || !this.description || !this.selectedTaskType || this.selectedUserIds.length === 0) {
+                  this.showAlertMessage('error', 'Please fill in all required fields and assign at least one user.');
+                  return;
+                }
+
+                const newTask = {
+                  title: this.title.trim(),
+                  description: this.description.trim(),
+                  task_type_id: this.selectedTaskType,
+                  assigned_user_ids: this.selectedUserIds
+                };
+
+                const response = await axios.post(
+                  `${this.baseURL}/create_task`,
+                  newTask,
+                  {
+                    headers: {
+                      'Authorization': `Bearer ${token}`,
+                      'Content-Type': 'application/json',
+                    },
+                  }
+                );
+
+                if (response.status === 201 && response.data.message) {
+                  this.showAlertMessage('success', response.data.message);
+
+                  // Clear form
+                  this.title = '';
+                  this.description = '';
+                  this.selectedTaskType = null;
+                  this.selectedUserIds = [];
+
+                  // Refresh task list
+                  await this.fetchTasks();
+                } else {
+                  this.showAlertMessage('error', 'Unexpected response from server.');
+                }
+
+              } catch (error) {
+                console.error('Error creating task:', error);
+                const message = error.response?.data?.error || 'Failed to create task. Please try again.';
+                this.showAlertMessage('error', message);
+              } finally {
+                this.isSubmitting = false;
+              }
+            },
+
+          async fetchTasks() {
+              try {
+                const token = sessionStorage.getItem('access_token');
+                if (!token) {
+                  console.error('No token found');
+                  this.$router.push('/');
+                  return;
+                }
+
+                const response = await axios.get(`${this.baseURL}/fetch_tasks`, {
+                  headers: {
+                    Authorization: `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                  }
+                });
+
+                if (response.status === 200 && Array.isArray(response.data)) {
+                  this.cardInfo = response.data;
+                  console.log('Tasks fetched:', this.cardInfo);
+                } else {
+                  console.warn('Unexpected response format:', response);
+                  this.cardInfo = [];
+                }
+
+              } catch (error) {
+                console.error('Error fetching tasks:', error);
+                this.cardInfo = [];
+                this.showAlertMessage?.('error', 'Failed to load tasks. Please try again.');
+              }
+            },
     },
-  mounted() {
-    this.loadDummyCards();
-   }
-  }
+    
+}
 </script>
 <style>
 /* In your CSS file */

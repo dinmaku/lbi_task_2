@@ -4,6 +4,7 @@ import DefaultLayout from '../pages/defaultLayout.vue'
 import Dashboard from '../pages/dashboard.vue'
 import ManageUsers from '../pages/manage_users.vue'
 import UpdateProfile from '../pages/updateProfile.vue'
+import TaskPerUser from '../pages/task_per_user.vue'
 
 
 const routes = [
@@ -30,6 +31,11 @@ const routes = [
         path: 'update-profile',
         name: 'UpdateProfile',
         component: UpdateProfile
+      },
+      {
+        path: 'task-per-user',
+        name: 'TaskPerUser',
+        component: TaskPerUser
       }
     ]
   }
