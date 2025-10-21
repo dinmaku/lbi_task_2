@@ -64,8 +64,9 @@
             <div
               v-for="(card, index) in cardInfo"
               :key="card.task_id"
+              @click="showEditTaskForm(card)"
               class="w-[300px] h-[320px] bg-white border border-gray-300 rounded-lg shadow-md p-5 transition-transform duration-300 transform hover:scale-105 cursor-pointer"
-              @click=""
+              
             >
               <div class="h-9 w-22 bg-red-100 rounded-full mb-4 flex items-center justify-center">
                 <span class="text-red-600 text-xs font-semibold">
@@ -192,7 +193,7 @@
   
  
        
-        <div v-if="AddTaskTypeForm" @click.self="closeAddTaskType" class="fixed inset-0 bg-gray-800/30 overflow-y-auto flex justify-center items-center z-100">
+        <div v-if="AddTaskTypeForm" @click.self="closeAddTaskType" class="fixed inset-0 bg-gray-800/30 overflow-y-auto flex justify-center items-center z-50">
           <div class="bg-white p-5 rounded-lg shadow-lg w-[400px]">
             <div class="flex flex-col items-center space-y-8">
               <h2 class="text-xl font-semibold mb-4">Add New Task Type</h2>
@@ -280,6 +281,133 @@
           </div>
         </div>
       </div>
+
+
+
+  <!---Edit Task Modal-->
+    <form @submit.prevent="updateTask" v-if="editTaskForm" @click.self="closeEditTaskForm" class = "fixed inset-0 bg-gray-800/20 overflow-y-auto flex justify-center items-center z-99">
+         <div class="bg-white w-[600px] h-[700px] rounded-md">
+           <h1 class = "text-2xl font-semibold py-5 text-gray-600">Update Task</h1>
+            <div class="flex flex-col space-y-2 p-10">
+              <label for="" class="font-semibold text-start text-lg text-gray-700">Title</label>
+              <input
+                type="text"
+                class="w-2/3 h-10 border-b border-gray-400 outline-none"
+                placeholder="Enter a comprehensive task title"
+                v-model="editTaskData.title"
+              />
+
+              <label for="" class="font-semibold text-start text-lg text-gray-700 mt-5">Task type</label>
+               <div class="grid grid-cols-4 gap-2 mt-1">
+              <button
+                  v-for="(type, index) in taskTypes"
+                  :key="type.task_type_id || index"
+                  @click="selectTaskType(type)"
+                  type="button"
+                  class="rounded-full w-28 h-8 flex justify-center items-center cursor-pointer transition-transform duration-300 transform hover:scale-105"
+                  :class="[
+                    getColorClass(type.task_type_name),
+                    editTaskData.task_type_id === type.task_type_id ? 'ring-2 ring-offset-2 ring-blue scale-105' : 'opacity-90'
+                  ]"
+                >
+                  <p class="text-sm text-white font-semibold truncate">
+                    {{ type.task_type_name }}
+                  </p>
+                </button>
+                </div>
+
+              <label for="" class="font-semibold text-start text-lg text-gray-700 mt-3">Description</label>
+              <textarea
+                name=""
+                id=""
+                class="w-2/3 h-30 bg-gray-100 border-none rounded-lg shadow-md outline-none p-3"
+                placeholder="Enter a task description"
+                v-model="editTaskData.description"
+              ></textarea>
+              <div class="flex flex-row items-center space-x-2 mt-3">
+              <label for="" class="font-semibold text-start text-lg text-gray-700">Assigned to:</label>
+              <button
+                  @click="openEditAssignModal"
+                  type="button"
+                  class="h-6 w-6 bg-gray-300 rounded-full flex justify-center items-center cursor-pointer transition-transform duration-300 transform hover:scale-110 mt-1"
+                >
+                  <span class="text-2xl font-semibold leading-none mb-[7px]">+</span>
+                </button>
+                </div>
+                <div class="flex justify-between items-center">
+                <div class="flex items-center">
+                  <div
+                  v-for="user in editTaskData.assigned_user_ids"
+                  :key="user.user_id"
+                  class="relative group"
+                >
+                  <img
+                    :src="getUserAvatar(user)"
+                    :alt="user.firstName"
+                    class="w-8 h-8 rounded-full mr-2"
+                    :title="user.firstName + ' ' + user.lastName"
+                  />
+                </div>
+              </div>
+              </div>
+              <div class="mt-5">
+                <button
+                  type="submit"
+                  class="bg-blue-400 text-center text-lg font-semibold h-10 w-full rounded-lg shadow-md cursor-pointer translate-transform duration-300 transform hover:scale-105"
+                >
+                  Save
+                </button>
+             </div>
+
+              </div>
+         </div>
+    </form>
+
+
+  <!-- Edit Assign Modal -->
+<div
+  v-if="showEditAssignModal"
+  @click.self="showEditAssignModal = false"
+  class="fixed inset-0 bg-gray-800/40 flex justify-center items-center z-999"
+>
+  <div class="bg-white rounded-lg shadow-lg w-[450px] p-6 space-y-5">
+    <h2 class="text-xl font-semibold text-gray-800">Reassign Task</h2>
+
+    <div class="max-h-60 overflow-y-auto border rounded-lg p-3 space-y-2">
+      <div
+        v-for="user in users"
+        :key="user.user_id"
+        class="flex items-center space-x-2"
+      >
+        <input
+          type="checkbox"
+          :id="'edit-user-' + user.user_id"
+          :value="user.user_id"
+          v-model="editSelectedUserIds"
+          class="cursor-pointer w-4 h-4 text-blue-600 border-gray-300 rounded"
+        />
+        <label :for="'edit-user-' + user.user_id" class="cursor-pointer text-gray-700">
+          {{ user.firstName }} {{ user.lastName }}
+        </label>
+      </div>
+    </div>
+
+    <div class="flex justify-end space-x-3 mt-4">
+      <button
+        @click="showEditAssignModal = false"
+        class="px-4 py-2 bg-gray-300 text-gray-800 rounded hover:bg-gray-400 transition cursor-pointer"
+      >
+        Cancel
+      </button>
+      <button
+        @click="confirmEditAssignUsers"
+        class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition cursor-pointer"
+      >
+        Assign
+      </button>
+    </div>
+  </div>
+</div>
         
  
 
@@ -320,6 +448,17 @@ export default {
       showAssignModal: false,
       title: '',
       description: '',
+      editTaskForm: false,
+      editTaskData: {
+          task_id: null,
+          title: '',
+          description: '',
+          task_type_id: null,
+          assigned_user_ids: []
+        },
+      editSelectedUserIds: [],
+      showEditAssignModal: false,
+      
     };
   },
     mounted() {
@@ -372,8 +511,20 @@ export default {
         }
       },
       selectTaskType(type) {
-          this.selectedTaskType = this.selectedTaskType === type.task_type_id ? null : type.task_type_id;
-        },
+        if (this.editTaskForm) {
+          // Editing mode
+          this.editTaskData.task_type_id =
+            this.editTaskData.task_type_id === type.task_type_id
+              ? null
+              : type.task_type_id;
+        } else {
+          // Creating new task
+          this.selectedTaskType =
+            this.selectedTaskType === type.task_type_id
+              ? null
+              : type.task_type_id;
+        }
+      },
 
     async addTaskType() {
           try {
@@ -447,6 +598,7 @@ export default {
 
        openAssignModal() {
           this.showAssignModal = true;
+          this.selectedUserIds = this.editTaskData.assigned_user_ids.map(u => u.user_id);
         },
 
         closeAssignModal() {
@@ -572,8 +724,92 @@ export default {
                 this.showAlertMessage?.('error', 'Failed to load tasks. Please try again.');
               }
             },
+    showEditTaskForm(task) {
+        this.editTaskForm = true;
+        this.editTaskData = {
+          task_id: task.task_id,
+          title: task.title,
+          description: task.description,
+          task_type_id: task.task_type?.task_type_id || null,
+          // ✅ Only store user IDs
+          assigned_user_ids: task.users ? task.users.map(u => u.user_id) : []
+        };
+        this.selectedTaskType = this.editTaskData.task_type_id;
+        this.selectedUserIds = [...this.editTaskData.assigned_user_ids];
+      },
+    closeEditTaskForm() {
+      this.editTaskForm = false;
     },
-    
+
+    openEditAssignModal() {
+      this.showEditAssignModal = true;
+      this.editSelectedUserIds = this.editTaskData.assigned_user_ids.map(u => u.user_id);
+    },
+    confirmEditAssignUsers() {
+      this.editTaskData.assigned_user_ids = this.users.filter(user =>
+        this.editSelectedUserIds.includes(user.user_id)
+      );
+      this.showEditAssignModal = false;
+    },
+
+    async updateTask() {
+        try {
+          const token = sessionStorage.getItem('access_token');
+          if (!token) {
+            console.error('No token found');
+            this.$router.push('/');
+            return;
+          }
+
+          // Validate fields
+          if (!this.editTaskData.title || !this.editTaskData.description || !this.editTaskData.task_type_id) {
+            this.showAlertMessage('error', 'Please fill in all required fields.');
+            return;
+          }
+
+          const updatedTask = {
+            title: this.editTaskData.title,
+            description: this.editTaskData.description,
+            task_type_id: this.editTaskData.task_type_id,
+            assigned_user_ids: this.editTaskData.assigned_user_ids.map(u => 
+            typeof u === "object" ? u.user_id : u
+          )
+          };
+
+          const response = await axios.put(
+            `${this.baseURL}/update_task/${this.editTaskData.task_id}`,
+            updatedTask,
+            {
+              headers: {
+                Authorization: `Bearer ${token}`,
+                'Content-Type': 'application/json',
+              },
+            }
+          );
+
+          if (response.data.message) {
+            this.showAlertMessage('success', response.data.message);
+          }
+
+          // Refresh tasks (if you have a function for it)
+          await this.fetchTasks();
+
+          // Close the modal and reset form
+          this.editTaskForm = false;
+          this.editTaskData = {
+            task_id: null,
+            title: '',
+            description: '',
+            task_type_id: null,
+            assigned_user_ids: []
+          };
+
+        } catch (error) {
+          console.error('Error updating task:', error);
+          this.showAlertMessage('error', 'Failed to update task. Please try again.');
+        }
+      },
+  }
 }
 </script>
 <style>

@@ -13,6 +13,7 @@ from datetime import date
 import re
 import logging
 import os
+import traceback
 
 
 
@@ -633,6 +634,38 @@ def fetch_tasks():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
+
+@app.route('/update_task/<int:task_id>', methods=['PUT'])
+def update_task(task_id):
+    try:
+        data = request.get_json()
+
+        task = Tasks.query.get(task_id)
+        if not task:
+            return jsonify({'error': 'Task not found'}), 404
+
+        # ✅ Update main fields safely
+        task.title = data.get('title', task.title)
+        task.description = data.get('description', task.description)
+        task.task_type_id = data.get('task_type_id', task.task_type_id)
+        task.status = data.get('status', task.status)
+
+        # ✅ Optional: handle assigned users if passed
+        if 'assigned_user_ids' in data:
+            # Clear existing assignments first
+            TasksAssigned.query.filter_by(task_id=task_id).delete()
+
+            # Re-assign new users
+            for user_id in data['assigned_user_ids']:
+                db.session.add(TasksAssigned(task_id=task_id, user_id=user_id))
+
+        db.session.commit()
+        return jsonify({'message': 'Task updated successfully'}), 200
+
+    except Exception as e:
+        db.session.rollback()
+        traceback.print_exc()
+        return jsonify({'error': str(e)}), 500
 
       
 
