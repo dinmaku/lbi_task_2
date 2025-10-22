@@ -65,7 +65,7 @@
               v-for="(card, index) in cardInfo"
               :key="card.task_id"
               @click="showEditTaskForm(card)"
-              class="w-[300px] h-[320px] bg-white border border-gray-300 rounded-lg shadow-md p-5 transition-transform duration-300 transform hover:scale-105 cursor-pointer"
+              class="w-[300px] h-auto bg-white border border-gray-300 rounded-lg shadow-md p-5 transition-transform duration-300 transform hover:scale-105 cursor-pointer"
               
             >
               <div class="h-9 w-22 bg-red-100 rounded-full mb-4 flex items-center justify-center">
@@ -74,10 +74,18 @@
                 </span>
               </div>
               <h2 class="text-lg font-semibold mb-4">{{ card.title }}</h2>
-              <p class="text-gray-600 line-clamp-3 w-64">{{ card.description }}</p>
-              <p class="text-blue-600 font-semibold mt-2">{{ card.status }}</p>
+              <p class="text-gray-600 line-clamp-2 w-64">{{ card.description }}</p>
+              <p class="text-blue-600 font-semibold mt-2"
+                :class="{'text-blue-600' : card.status === 'Pending',
+                          'text-yellow-600' : card.status === 'In Progress',
+                          'text-green-600' : card.status === 'Done',
+                          'text-red-600' : card.status === 'Cancelled'
+                }">{{ card.status }}</p>
               <p class="text-gray-600 text-sm font-semibold mt-5">
-                Created at: <span class="text-gray-900">{{ card.created_at }}</span>
+                Created at: <span class="text-green-600">{{ formatDate(card.created_at) }}</span>
+              </p>
+              <p class="text-gray-600 text-sm font-semibold mt-5">
+                Deadline: <span class="text-red-600">{{ formatDate(card.deadline) }}</span>
               </p>
               <hr class="my-5 border-gray-300" />
               <div class="flex justify-between items-center">
@@ -104,7 +112,7 @@
 
       <form @submit.prevent="createTask" class="flex flex-col text-start space-y-2 overflow-y-hidden">
           <label for="" class="text-2xl font-semibold py-5 text-gray-600">Create a new task</label>
-          <div class="bg-gray-200/70 w-[550px] h-[620px] rounded-xl shadow-md p-10">
+          <div class="bg-gray-200/70 w-[550px] h-[700px] rounded-xl shadow-md p-10">
             <div class="flex flex-col space-y-2">
               <label for="" class="font-semibold text-lg text-gray-700">Title</label>
               <input
@@ -176,6 +184,15 @@
                   />
                 </div>
               </div>
+
+             <label class="font-semibold text-lg text-gray-700 mt-3">Deadline</label>
+              <input
+                type="date"
+                id="date"
+                name="date"
+                v-model="deadline"
+                class="block w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+              />
 
         
               <div class="flex justify-center items-center mt-5">
@@ -286,7 +303,7 @@
 
   <!---Edit Task Modal-->
     <form @submit.prevent="updateTask" v-if="editTaskForm" @click.self="closeEditTaskForm" class = "fixed inset-0 bg-gray-800/20 overflow-y-auto flex justify-center items-center z-99">
-         <div class="bg-white w-[600px] h-[700px] rounded-md">
+         <div class="bg-white w-[600px] h-[770px] rounded-md">
            <h1 class = "text-2xl font-semibold py-5 text-gray-600">Update Task</h1>
             <div class="flex flex-col space-y-2 p-10">
               <label for="" class="font-semibold text-start text-lg text-gray-700">Title</label>
@@ -325,7 +342,7 @@
                 v-model="editTaskData.description"
               ></textarea>
               <div class="flex flex-row items-center space-x-2 mt-3">
-              <label for="" class="font-semibold text-start text-lg text-gray-700">Assigned to:</label>
+              <label for="" class="font-semibold text-start text-lg text-gray-700">Assigned to</label>
               <button
                   @click="openEditAssignModal"
                   type="button"
@@ -335,21 +352,29 @@
                 </button>
                 </div>
                 <div class="flex justify-between items-center">
-                <div class="flex items-center">
-                  <div
-                  v-for="user in editTaskData.assigned_user_ids"
-                  :key="user.user_id"
-                  class="relative group"
-                >
-                  <img
-                    :src="getUserAvatar(user)"
-                    :alt="user.firstName"
-                    class="w-8 h-8 rounded-full mr-2"
-                    :title="user.firstName + ' ' + user.lastName"
-                  />
+                  <div class="flex items-center space-x-2">
+                    <div
+                      v-for="user in editTaskData.assigned_users"
+                      :key="user.user_id"
+                      class="relative group"
+                    >
+                      <img
+                        :src="getUserAvatar(user)"
+                        :alt="user.firstName"
+                        class="w-8 h-8 rounded-full border-2 border-white shadow hover:scale-110 transition"
+                        :title="`${user.firstName} ${user.lastName}`"
+                      />
+                    </div>
+                  </div>
                 </div>
-              </div>
-              </div>
+                <label class="font-semibold text-start text-lg text-gray-700 mt-3">Deadline</label>
+              <input
+                type="date"
+                id="date"
+                name="date"
+                v-model="editTaskData.deadline"
+                class="block w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+              />
               <div class="mt-5">
                 <button
                   type="submit"
@@ -448,11 +473,13 @@ export default {
       showAssignModal: false,
       title: '',
       description: '',
+      deadline: '',
       editTaskForm: false,
       editTaskData: {
           task_id: null,
           title: '',
           description: '',
+          deadline: '',
           task_type_id: null,
           assigned_user_ids: []
         },
@@ -655,6 +682,7 @@ export default {
                 const newTask = {
                   title: this.title.trim(),
                   description: this.description.trim(),
+                  deadline: this.deadline,
                   task_type_id: this.selectedTaskType,
                   assigned_user_ids: this.selectedUserIds
                 };
@@ -676,6 +704,7 @@ export default {
                   // Clear form
                   this.title = '';
                   this.description = '';
+                  this.deadline = '';
                   this.selectedTaskType = null;
                   this.selectedUserIds = [];
 
@@ -725,30 +754,46 @@ export default {
               }
             },
     showEditTaskForm(task) {
-        this.editTaskForm = true;
-        this.editTaskData = {
-          task_id: task.task_id,
-          title: task.title,
-          description: task.description,
-          task_type_id: task.task_type?.task_type_id || null,
-          // ✅ Only store user IDs
-          assigned_user_ids: task.users ? task.users.map(u => u.user_id) : []
-        };
-        this.selectedTaskType = this.editTaskData.task_type_id;
-        this.selectedUserIds = [...this.editTaskData.assigned_user_ids];
-      },
+      this.editTaskForm = true;
+      this.editTaskData = {
+        task_id: task.task_id,
+        title: task.title,
+        description: task.description,
+        deadline: task.deadline ? new Date(task.deadline).toISOString().split('T')[0] : '',
+        task_type_id: task.task_type?.task_type_id || null,
+        assigned_users: task.users || [], // full user objects, not just IDs
+        assigned_user_ids: task.users ? task.users.map(u => u.user_id) : [],
+      };
+
+      this.selectedTaskType = this.editTaskData.task_type_id;
+      this.editSelectedUserIds = [...this.editTaskData.assigned_user_ids];
+    },
     closeEditTaskForm() {
       this.editTaskForm = false;
+      this.editTaskData = {};
+      this.editSelectedUserIds = [];
     },
 
     openEditAssignModal() {
       this.showEditAssignModal = true;
-      this.editSelectedUserIds = this.editTaskData.assigned_user_ids.map(u => u.user_id);
+
+      // If we have full user objects, extract their IDs
+      if (this.editTaskData.assigned_users) {
+        this.editSelectedUserIds = this.editTaskData.assigned_users.map(u => u.user_id);
+      } else {
+        this.editSelectedUserIds = [...this.editTaskData.assigned_user_ids];
+      }
     },
     confirmEditAssignUsers() {
-      this.editTaskData.assigned_user_ids = this.users.filter(user =>
+      // Update assigned IDs
+      this.editTaskData.assigned_user_ids = [...this.editSelectedUserIds];
+
+      // ✅ Also update the actual user objects
+      this.editTaskData.assigned_users = this.users.filter(user =>
         this.editSelectedUserIds.includes(user.user_id)
       );
+
+      // Close modal
       this.showEditAssignModal = false;
     },
 
@@ -770,6 +815,7 @@ export default {
           const updatedTask = {
             title: this.editTaskData.title,
             description: this.editTaskData.description,
+            deadline: this.editTaskData.deadline,
             task_type_id: this.editTaskData.task_type_id,
             assigned_user_ids: this.editTaskData.assigned_user_ids.map(u => 
             typeof u === "object" ? u.user_id : u
@@ -800,6 +846,7 @@ export default {
             task_id: null,
             title: '',
             description: '',
+            deadline: '',
             task_type_id: null,
             assigned_user_ids: []
           };
@@ -809,6 +856,20 @@ export default {
           this.showAlertMessage('error', 'Failed to update task. Please try again.');
         }
       },
+      formatDate(dateString, format = 'long') {
+          if (!dateString) return '';
+
+          const date = new Date(dateString);
+
+          if (isNaN(date)) return dateString; // fallback for invalid date
+
+          const options =
+            format === 'short'
+              ? { year: 'numeric', month: 'short', day: 'numeric' } // e.g. "Oct 20, 2025"
+              : { year: 'numeric', month: 'long', day: 'numeric' }; // e.g. "October 20, 2025"
+
+          return date.toLocaleDateString('en-US', options);
+        },
   }
 }
 </script>

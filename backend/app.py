@@ -62,6 +62,7 @@ class Tasks(db.Model):
     title = db.Column(db.String(225), nullable=True)
     description = db.Column(db.String(225), nullable=True)
     created_at = db.Column(db.Date, default=date.today)
+    deadline = db.Column(db.Date, nullable=True)
     status = db.Column(db.String(225), nullable=True, default='Pending')
     task_type_id = db.Column(db.Integer, db.ForeignKey('task_type.task_type_id'))
 
@@ -80,6 +81,7 @@ class Tasks(db.Model):
             'title': self.title,
             'description': self.description,
             'created_at': self.created_at.isoformat() if self.created_at else None,
+            'deadline': self.deadline,
             'status': self.status,
             'task_type': self.task_type.serialize() if self.task_type else None,
             'task_type_name': self.task_type.task_type_name if self.task_type else None,
@@ -589,16 +591,18 @@ def create_task():
 
         title = data.get('title')
         description = data.get('description')
+        deadline = data.get('deadline')
         task_type_id = data.get('task_type_id')
         assigned_user_ids = data.get('assigned_user_ids', [])
 
-        # 🔒 Require all required fields including assignment
+       
         if not title or not description or not task_type_id or not assigned_user_ids:
             return jsonify({'error': 'Please fill in all required fields and assign at least one user.'}), 400
 
         new_task = Tasks(
             title=title,
             description=description,
+            deadline=deadline,
             task_type_id=task_type_id,
             created_at=date.today(),
             status='Pending'
@@ -626,8 +630,8 @@ def fetch_tasks():
         from sqlalchemy.orm import joinedload
 
         tasks = Tasks.query.options(
-            joinedload(Tasks.users),         # Load assigned users
-            joinedload(Tasks.task_type)      # Load task type
+            joinedload(Tasks.users),        
+            joinedload(Tasks.task_type)     
         ).all()
 
         return jsonify([task.serialize() for task in tasks]), 200
@@ -644,18 +648,19 @@ def update_task(task_id):
         if not task:
             return jsonify({'error': 'Task not found'}), 404
 
-        # ✅ Update main fields safely
+        
         task.title = data.get('title', task.title)
         task.description = data.get('description', task.description)
+        task.deadline = data.get('deadline', task.deadline)
         task.task_type_id = data.get('task_type_id', task.task_type_id)
         task.status = data.get('status', task.status)
 
-        # ✅ Optional: handle assigned users if passed
+       
         if 'assigned_user_ids' in data:
-            # Clear existing assignments first
+           
             TasksAssigned.query.filter_by(task_id=task_id).delete()
 
-            # Re-assign new users
+         
             for user_id in data['assigned_user_ids']:
                 db.session.add(TasksAssigned(task_id=task_id, user_id=user_id))
 
@@ -665,6 +670,50 @@ def update_task(task_id):
     except Exception as e:
         db.session.rollback()
         traceback.print_exc()
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/fetch_tasks_user/<int:user_id>', methods=['GET'])
+def fetch_tasks_per_user(user_id):
+    try:
+        
+        user_tasks = (
+            db.session.query(Tasks)
+            .join(TasksAssigned, Tasks.task_id == TasksAssigned.task_id)
+            .filter(TasksAssigned.user_id == user_id)
+            .all()
+        )
+
+        if not user_tasks:
+            return jsonify({'message': 'No tasks found for this user'}), 200
+
+      
+        return jsonify([task.serialize() for task in user_tasks]), 200
+
+    except Exception as e:
+        traceback.print_exc()
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/update_task_status/<int:task_id>', methods=['PUT'])
+def update_task_status(task_id):
+    try:
+        data = request.get_json()
+        new_status = data.get('status')
+
+        if new_status not in ['Pending', 'In Progress', 'Done', 'Cancelled']:
+            return jsonify({'error': 'Invalid status value'}), 400
+
+        task = Tasks.query.get(task_id)
+        if not task:
+            return jsonify({'error': 'Task not found'}), 404
+
+        task.status = new_status
+        db.session.commit()
+
+        return jsonify({'message': 'Task status updated successfully'}), 200
+
+    except Exception as e:
+        db.session.rollback()
         return jsonify({'error': str(e)}), 500
 
       
