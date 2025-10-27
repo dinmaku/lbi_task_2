@@ -12,6 +12,7 @@
         <div class = "flex flex-col space-y-[10px]">
           <router-link
             to="/dashboard"
+            v-if="isAdmin"
             active-class="bg-white text-gray-900 whitespace-nowrap"
             class="inline-flex items-center py-[20px] px-[10px] w-full text-md font-interBold font-semibold rounded-md border-gray-200 hover:bg-white hover:text-gray-900 transition duration-400 ease-in-out group whitespace-nowrap"
           >
@@ -28,6 +29,7 @@
           </router-link>
           <router-link
             to="/manage-users"
+            v-if="isAdmin"
             active-class="bg-white text-gray-900 whitespace-nowrap"
             class="inline-flex items-center py-[20px] px-[10px] w-full text-md font-interBold font-semibold rounded-md border-gray-200 hover:bg-white hover:text-gray-900 transition duration-400 ease-in-out group whitespace-nowrap"
           >
@@ -158,6 +160,11 @@ export default {
       return this.$route.path === route;
     }
   },
+  computed: {
+    isAdmin() {
+      return localStorage.getItem('user_type') === 'admin';
+    }
+  }
 };
 </script>
 

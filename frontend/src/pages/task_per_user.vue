@@ -131,7 +131,7 @@
   <div
   v-if="taskModal"
   @click.self="taskModal = false"
-  class="fixed inset-0 bg-black/30 backdrop-blur-sm overflow-y-auto flex justify-center items-center z-[999]"
+  class="fixed inset-0 bg-gray-800/20 overflow-y-auto flex justify-center items-center z-[999]"
 >
   <div class="bg-white p-6 rounded-xl shadow-2xl w-full max-w-xl mx-4">
     <div class="space-y-6">
@@ -204,6 +204,8 @@
           <p class="text-gray-600 font-semibold">End Date:</p>
           <p class="text-gray-900 font-medium">{{ taskDetails.deadline }}</p>
         </div>
+
+
       </div>
 
       <!-- Actions -->
@@ -452,6 +454,7 @@ export default {
             alert('Failed to update status.');
           }
         },
+
 
 
   },

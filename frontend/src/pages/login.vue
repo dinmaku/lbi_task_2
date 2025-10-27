@@ -75,6 +75,7 @@ export default {
 
           if (response.data.message === "Login successful") {
             const access_token = response.data.access_token;
+            const userProfile = response.data.user;
 
             // Store token based on "Remember me"
             if (this.rememberMe) {
@@ -96,10 +97,17 @@ export default {
             localStorage.setItem('loggedIn', 'true');
 
             this.$emit('loginSuccess');
-            this.$router.push('/dashboard');
-          } else {
-            this.errorMessage = 'Unexpected response from server.';
-          }
+
+          
+            if (userProfile.user_type === 'admin') {
+              this.$router.push('/dashboard');
+            } else {
+              this.$router.push('/task-per-user');
+            }
+
+            } else {
+              this.errorMessage = 'Unexpected response from server.';
+            }
 
         } catch (error) {
           if (error.response && error.response.data) {

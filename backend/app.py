@@ -1,5 +1,6 @@
 from flask import Flask, request, jsonify
 from flask_sqlalchemy import SQLAlchemy
+from sqlalchemy import cast, Date
 from flask_cors import CORS
 from flask import request, jsonify
 from werkzeug.security import check_password_hash
@@ -9,7 +10,7 @@ from werkzeug.utils import secure_filename
 import base64
 import jwt
 import datetime
-from datetime import date
+from datetime import date, timedelta, timezone
 import re
 import logging
 import os
@@ -369,10 +370,10 @@ def add_account():
         if not data:
             return jsonify({"error": "No data provided"}), 400
 
-        # Log received data
+        
         logger.info(f"Received registration data: {data}")
 
-        # Extract data with default values
+      
         email = data.get('email', '').strip()
         firstname = data.get('firstname', '').strip()
         lastname = data.get('lastname', '').strip()
@@ -384,23 +385,23 @@ def add_account():
         status = 'Active',
         image = data.get('image', default_image).strip()
 
-        # Validate required fields
+
         if not all([email, firstname, lastname, username, password, contact, address, user_type]):
             logger.warning("Missing required fields")
             return jsonify({"error": "All fields are required"}), 400
 
-        # Validate email format
+       
         if not is_valid_email(email):
             logger.warning(f"Invalid email format: {email}")
             return jsonify({"error": "Invalid email format"}), 400
 
-        # Check for existing user
+    
         existing_user = Users.query.filter_by(email=email).first()
         if existing_user:
             logger.warning(f"Email already exists: {email}")
             return jsonify({"error": "User with this email already exists"}), 400
 
-        # Hash password and create new user
+       
         try:
             hashed_password = generate_password_hash(password)
             new_user = Users(
@@ -714,6 +715,54 @@ def update_task_status(task_id):
 
     except Exception as e:
         db.session.rollback()
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/task_stats', methods=['GET'])
+def get_task_stats():
+    try:
+        # Use date only — no datetime or timezone
+        today = date.today()
+        one_month_ago = today - timedelta(days=30)
+
+        # Count totals
+        total_done = Tasks.query.filter_by(status='Done').count()
+        total_ongoing = Tasks.query.filter(Tasks.status.in_(['Pending', 'Work in Progress'])).count()
+        total_cancelled = Tasks.query.filter_by(status='Cancelled').count()
+
+        # Count tasks created in the last month (date-only)
+        done_last_month = Tasks.query.filter(
+            Tasks.status == 'Done',
+            cast(Tasks.created_at, Date) >= one_month_ago
+        ).count()
+
+        ongoing_last_month = Tasks.query.filter(
+            Tasks.status.in_(['Pending', 'Work in Progress']),
+            cast(Tasks.created_at, Date) >= one_month_ago
+        ).count()
+
+        cancelled_last_month = Tasks.query.filter(
+            Tasks.status == 'Cancelled',
+            cast(Tasks.created_at, Date) >= one_month_ago
+        ).count()
+
+        # Helper function for growth %
+        def calc_growth(current, last_month):
+            if last_month == 0:
+                return 100.0 if current > 0 else 0.0
+            return round(((current - last_month) / last_month) * 100, 2)
+
+        # Return stats
+        stats = {
+            'done': {'count': total_done, 'growth': calc_growth(total_done, done_last_month)},
+            'ongoing': {'count': total_ongoing, 'growth': calc_growth(total_ongoing, ongoing_last_month)},
+            'cancelled': {'count': total_cancelled, 'growth': calc_growth(total_cancelled, cancelled_last_month)}
+        }
+
+        return jsonify(stats), 200
+
+    except Exception as e:
+        print("Error in /task_stats:", e)
         return jsonify({'error': str(e)}), 500
 
       

@@ -20,41 +20,44 @@
    </div>
    <div class="flex h-screen flex-row justify-start mt-10 space-x-20">
      <div class="flex flex-col text-start space-y-2 overflow-y-auto scroll-hidden">
-          <label for="" class="text-2xl font-semibold py-5 text-gray-600">Project Summary</label>
+          <label for="" class="text-2xl font-semibold py-5 text-gray-600">Task Summary</label>
             <div class="flex flex-row">
               <div class="w-[300px] h-[150px] bg-green-50 rounded-lg shadow-md p-5 mr-10 space-y-2">
-                <p class="text-gray-500 font-semibold">Total Projects Done</p>
-                <h2 class="text-4xl font-bold mt-3">12</h2>
-                <p class="text-sm text-gray-400"><span class="text-green-600">2.5%</span> More than last month</p>
+                <p class="text-gray-500 font-semibold">Total Tasks Done</p>
+                <h2 class="text-4xl font-bold mt-3">{{ stats.done.count }}</h2>
+                <p class="text-sm text-gray-400"><span class="text-green-600">{{ stats.done.growth >= 0 ? '+' : '' }}{{ stats.done.growth }}%</span> 
+                 {{ stats.done.growth >= 0 ? 'More' : 'Less' }} than last month </p>
               </div>
               <div class="w-[300px] h-[150px] bg-orange-50 rounded-lg shadow-md p-5 mr-10 space-y-2">
-                <p class="text-gray-500 font-semibold">Ongoing Projects</p>
-                <h2 class="text-4xl font-bold mt-3">8</h2>
-                <p class="text-sm text-gray-400"><span class="text-green-600">1.5%</span> More than last month</p>
+                <p class="text-gray-500 font-semibold">Ongoing Tasks</p>
+                <h2 class="text-4xl font-bold mt-3">{{ stats.ongoing.count }}</h2>
+                <p class="text-sm text-gray-400"><span class="text-green-600">{{ stats.ongoing.growth >= 0 ? '+' : '' }}{{ stats.ongoing.growth }}%</span>
+                  {{ stats.ongoing.growth >= 0 ? 'More' : 'Less' }} than last month</p>
               </div>
-              <div class="w-[300px] h-[150px] bg-purple-100 rounded-lg shadow-md p-5 space-y-2">
-                <p class="text-gray-500 font-semibold">Completed Projects</p>
-                <h2 class="text-4xl font-bold mt-3">4</h2>
-                <p class="text-sm text-gray-400"><span class="text-green-600">5.5%</span> More than last month</p>
+              <div class="w-[300px] h-[150px] bg-red-100 rounded-lg shadow-md p-5 space-y-2">
+                <p class="text-gray-500 font-semibold">Cancelled Tasks</p>
+                <h2 class="text-4xl font-bold mt-3">{{ stats.cancelled.count }}</h2>
+                <p class="text-sm text-gray-400"><span class="text-green-600">{{ stats.cancelled.growth >= 0 ? '+' : '' }}{{ stats.cancelled.growth }}%</span>
+                   {{ stats.cancelled.growth >= 0 ? 'More' : 'Less' }} than last month</p>
               </div>
             </div>
           <div class="flex flex row mt-5 space-x-10">
               <div class="flex justify-between items-center w-[300px] h-[60px] bg-gray-400/80 rounded-xl shadow-md p-5">
                  <h1 class="text-white text-xl font-semibold">Coming Next</h1>
                  <div class="rounded-full bg-white w-8 h-8 mr-2">
-                  <p class="text-gray-500 text-xl font-semibold text-center">3</p>
+                  <p class="text-gray-500 text-xl font-semibold text-center">{{ pendingTasksCount() }}</p>
                  </div>
               </div>
               <div class="flex justify-between items-center w-[300px] h-[60px] bg-blue-400/80 rounded-xl shadow-md p-5">
                  <h1 class="text-white text-xl font-semibold">In Progress</h1>
                  <div class="rounded-full bg-white w-8 h-8 mr-2">
-                  <p class="text-gray-500 text-xl font-semibold text-center">5</p>
+                  <p class="text-gray-500 text-xl font-semibold text-center">{{ inProgressTasksCount() }}</p>
                  </div>
               </div>
               <div class="flex justify-between items-center w-[300px] h-[60px] bg-green-600/80 rounded-xl shadow-md p-5">
                  <h1 class="text-white text-xl font-semibold">Completed</h1>
                  <div class="rounded-full bg-white w-8 h-8 mr-2">
-                  <p class="text-gray-500 text-xl font-semibold text-center">3  </p>
+                  <p class="text-gray-500 text-xl font-semibold text-center">{{ doneTasksCount() }}</p>
                  </div>
               </div>
                  
@@ -303,8 +306,31 @@
 
   <!---Edit Task Modal-->
     <form @submit.prevent="updateTask" v-if="editTaskForm" @click.self="closeEditTaskForm" class = "fixed inset-0 bg-gray-800/20 overflow-y-auto flex justify-center items-center z-99">
-         <div class="bg-white w-[600px] h-[770px] rounded-md">
+         <div class="bg-white w-[600px] h-[780px] rounded-md">
+          <div class="flex justify-between items-center px-7">
            <h1 class = "text-2xl font-semibold py-5 text-gray-600">Update Task</h1>
+            <!-- Status -->
+          <div class="flex justify-center items-center gap-3">
+            <div
+              class="flex items-center gap-2 cursor-pointer hover:bg-gray-100 px-2 py-1 rounded-md transition"
+              @click="openStatusModal"
+            >
+              <span
+                class="w-3 h-3 rounded-full"
+                :class="{
+                  'bg-blue-500': editTaskData.status === 'Pending',
+                  'bg-yellow-500': editTaskData.status === 'In Progress',
+                  'bg-green-500': editTaskData.status === 'Done',
+                  'bg-red-500': editTaskData.status === 'Cancelled'
+                }"
+              ></span>
+              <span class="text-gray-800 font-medium capitalize">
+                {{ editTaskData.status }}
+              </span>
+            </div>
+          </div>
+
+           </div>
             <div class="flex flex-col space-y-2 p-10">
               <label for="" class="font-semibold text-start text-lg text-gray-700">Title</label>
               <input
@@ -433,6 +459,49 @@
     </div>
   </div>
 </div>
+
+<!-- Change Status Modal -->
+    <div
+      v-if="showStatusModal"
+      @click.self="showStatusModal = false"
+      class="fixed inset-0 bg-gray-800/40 flex justify-center items-center z-999"
+    >
+      <div class="bg-white rounded-lg shadow-lg w-[350px] p-6 space-y-5">
+        <h2 class="text-xl font-semibold text-gray-800">Change Status</h2>
+
+        <div class="space-y-2">
+          <label
+            v-for="option in statusOptions"
+            :key="option"
+            class="flex items-center space-x-2 cursor-pointer hover:bg-gray-100 p-2 rounded-md"
+          >
+            <input
+              type="radio"
+              name="status"
+              :value="option"
+              v-model="selectedStatus"
+              class="text-blue-600 focus:ring-blue-500 cursor-pointer"
+            />
+            <span class="capitalize text-gray-700">{{ option }}</span>
+          </label>
+        </div>
+
+        <div class="flex justify-end space-x-3">
+          <button
+            @click="showStatusModal = false"
+            class="px-4 py-2 bg-gray-300 text-gray-800 rounded hover:bg-gray-400 transition cursor-pointer"
+          >
+            Cancel
+          </button>
+          <button
+            @click="updateStatus"
+            class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition cursor-pointer"
+          >
+            Save
+          </button>
+        </div>
+      </div>
+    </div>
         
  
 
@@ -471,7 +540,7 @@ export default {
       users: [],              
       selectedUserIds: [],    
       showAssignModal: false,
-      title: '',
+      title: '',   
       description: '',
       deadline: '',
       editTaskForm: false,
@@ -480,11 +549,19 @@ export default {
           title: '',
           description: '',
           deadline: '',
+          status: '',
           task_type_id: null,
           assigned_user_ids: []
         },
       editSelectedUserIds: [],
       showEditAssignModal: false,
+      showStatusModal: false,
+      statusOptions: ['Pending', 'In Progress', 'Done', 'Cancelled'],
+      stats: {
+        cancelled: { count:0, growth: 0 },
+        ongoing: { count:0, growth: 0 },
+        done: { count:0, growth: 0 }
+      },  
       
     };
   },
@@ -492,6 +569,7 @@ export default {
       this.fetchTasks();
       this.fetchTaskTypes();
       this.fetchUsers();
+      this.fetchStats();
     },
   methods: {
     
@@ -759,6 +837,7 @@ export default {
         task_id: task.task_id,
         title: task.title,
         description: task.description,
+        status: task.status,
         deadline: task.deadline ? new Date(task.deadline).toISOString().split('T')[0] : '',
         task_type_id: task.task_type?.task_type_id || null,
         assigned_users: task.users || [], // full user objects, not just IDs
@@ -870,6 +949,60 @@ export default {
 
           return date.toLocaleDateString('en-US', options);
         },
+
+        openStatusModal() {
+          this.selectedStatus = this.editTaskData.status;
+          this.showStatusModal = true;
+        },
+
+        async updateStatus() {
+          try {
+            const response = await fetch(`http://localhost:5000/update_task_status/${this.editTaskData.task_id}`, {
+              method: 'PUT',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({ status: this.selectedStatus }),
+            });
+
+            const result = await response.json();
+
+            if (!response.ok) {
+              throw new Error(result.error || 'Failed to update status');
+            }
+
+            // ✅ Update UI instantly
+            this.editTaskData.status = this.selectedStatus;
+            this.showStatusModal = false;
+            await this.fetchTasks(sessionStorage.getItem('user_id')); 
+            await this.fetchStats();
+            console.log(result.message);
+          } catch (error) {
+            console.error('Error updating status:', error);
+            alert('Failed to update status.');
+          }
+        },
+
+        pendingTasksCount() {
+          return this.cardInfo.filter(task => task.status === 'Pending').length;
+        },
+        inProgressTasksCount() {
+          return this.cardInfo.filter(task => task.status === 'In Progress').length;
+        },
+        doneTasksCount() {
+          return this.cardInfo.filter(task => task.status === 'Done').length;
+        },
+
+        async fetchStats() {
+          try {
+            const res = await fetch('http://localhost:5000/task_stats');
+            const data = await res.json();
+            this.stats = data;
+          } catch (error) {
+            console.error('Failed to fetch stats:', error);
+          }
+        },
+
   }
 }
 </script>

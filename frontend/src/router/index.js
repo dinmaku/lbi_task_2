@@ -20,22 +20,27 @@ const routes = [
       {
         path: 'dashboard',
         name: 'Dashboard',
-        component: Dashboard
+        component: Dashboard,
+        meta: { requiresAuth  : true, role: 'admin' }
       },
       {
         path: 'manage-users',
         name: 'ManageUsers',
-        component: ManageUsers
+        component: ManageUsers,
+        meta: { requiresAuth  : true, role: 'admin' }
+
       },
       {
         path: 'update-profile',
         name: 'UpdateProfile',
-        component: UpdateProfile
+        component: UpdateProfile,
+        meta: { requiresAuth  : true  }
       },
       {
         path: 'task-per-user',
         name: 'TaskPerUser',
-        component: TaskPerUser
+        component: TaskPerUser,
+        meta: { requiresAuth  : true} 
       }
     ]
   }
@@ -44,6 +49,31 @@ const routes = [
 const router = createRouter({
   history: createWebHistory(),
   routes
+})
+
+
+router.beforeEach((to, from, next) => {
+  const loggedIn = localStorage.getItem('loggedIn') === 'true'
+  const userType = localStorage.getItem('user_type')
+
+  // If route requires login
+  if (to.meta.requiresAuth && !loggedIn) {
+    next({ name: 'Login' })
+  } 
+  // If route has a specific role restriction
+  else if (to.meta.role && to.meta.role !== userType) {
+    // Redirect based on actual user type
+    if (userType === 'admin') {
+      next({ name: 'Dashboard' })
+    } else if (userType === 'staff') {
+      next({ name: 'TaskPerUser' })
+    } else {
+      next({ name: 'Login' })
+    }
+  } 
+  else {
+    next()
+  }
 })
 
 export default router
