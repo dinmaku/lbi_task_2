@@ -44,6 +44,8 @@
         <label class="text-gray-700 font-semibold mr-2">Filter:</label>
 
         <select
+            v-model="selectedFilter"
+            @change="applyFilter"
             class="appearance-none bg-white text-gray-800 px-4 py-2 pr-8 rounded-lg border border-gray-300 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-blue-400 cursor-pointer transition"
         >
             <option value="all">All Tasks</option>
@@ -270,6 +272,7 @@
 
 <script>
 import axios from 'axios';
+import { createApp } from 'vue';
 
 export default {
   name: 'TaskPerUser',
@@ -297,13 +300,18 @@ export default {
       showStatusModal: false,
       selectedStatus: '',
       statusOptions: ['In Progress', 'Done',],
+      selectedFilter: 'all',
+
 
     };
   },
   computed: {
-    filteredTasks() {
-      return this.tasks || [];
+    filteredPaginatedTasks() {
+      const filtered = this.filteredTasks
+      const start = (this.currentTasksPage - 1) * this.tasksPerPage
+      return filtered.slice(start, start + this.tasksPerPage)
     },
+
     totalTasksPages() {
       return Math.ceil(this.tasks.length / this.tasksPerPage);
     },
@@ -315,8 +323,25 @@ export default {
             dummyIndex: start + index + 1
           })).slice(start, end);
     },
+    filteredTasks() {
+      const today = new Date()
+      switch (this.selectedFilter) {
+        case 'active':
+          return this.tasks.filter(t => t.status === 'Pending' || t.status === 'In Progress')
+        case 'completed':
+          return this.tasks.filter(t => t.status === 'Done')
+        case 'overdue':
+          return this.tasks.filter(t => new Date(t.deadline) < today && t.status !== 'Done')
+        default:
+          return this.tasks
+      }
+    }
+
   },
   methods: {
+    applyFilter() {
+      this.currentTasksPage = 1 // reset to page 1 whenever filter changes
+    },
     closeAlert() {
       this.showAlert = false;
     },
