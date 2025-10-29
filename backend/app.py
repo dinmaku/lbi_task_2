@@ -5,12 +5,11 @@ from flask_cors import CORS
 from flask import request, jsonify
 from werkzeug.security import check_password_hash
 from werkzeug.security import generate_password_hash
-from sqlalchemy import LargeBinary
+from sqlalchemy import LargeBinary, cast, DateTime
 from werkzeug.utils import secure_filename
 import base64
 import jwt
-import datetime
-from datetime import date, timedelta, timezone
+from datetime import datetime, timedelta, timezone
 import re
 import logging
 import os
@@ -62,8 +61,8 @@ class Tasks(db.Model):
     task_id = db.Column(db.Integer, primary_key=True)
     title = db.Column(db.String(225), nullable=True)
     description = db.Column(db.String(225), nullable=True)
-    created_at = db.Column(db.Date, default=date.today)
-    deadline = db.Column(db.Date, nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.today)
+    deadline = db.Column(db.DateTime, nullable=True)
     status = db.Column(db.String(225), nullable=True, default='Pending')
     task_type_id = db.Column(db.Integer, db.ForeignKey('task_type.task_type_id'))
 
@@ -75,6 +74,9 @@ class Tasks(db.Model):
 
     # One-to-many relationship to TasksAssigned
     assigned = db.relationship('TasksAssigned', back_populates='task', cascade='all, delete-orphan')
+
+    # One-to-many relationship to TaskComments
+    comments = db.relationship('TaskComments', back_populates='task', cascade='all, delete-orphan')
 
     def serialize(self):
         return {
@@ -114,6 +116,7 @@ class Users(db.Model):
 
     tasks_assigned = db.relationship('TasksAssigned', back_populates='user', cascade='all, delete-orphan')
     tasks = db.relationship('Tasks', secondary='task_by_user', back_populates='users')
+    comments = db.relationship('TaskComments', back_populates='user', cascade='all, delete-orphan')
 
     def serialize(self):
         return {
@@ -150,6 +153,30 @@ class TasksAssigned(db.Model):
             'user': self.user.serialize() if self.user else None
         }
 
+class TaskComments(db.Model):
+    __tablename__ = 'comments'
+
+    comment_id = db.Column(db.Integer, primary_key=True)
+    task_id = db.Column(db.Integer, db.ForeignKey('tasks.task_id'), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.user_id'), nullable=False)
+    message = db.Column(db.Text, nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    # Relationships
+    task = db.relationship('Tasks', back_populates='comments')
+    user = db.relationship('Users', back_populates='comments')
+
+    def serialize(self):
+        return {
+            'comment_id': self.comment_id,
+            'task_id': self.task_id,
+            'user_id': self.user_id,
+            'message': self.message,
+            'created_at': self.created_at.isoformat(),
+            'user_name': f"{self.user.firstname} {self.user.lastname}" if self.user else None,
+            'user_image': self.user.image if self.user else None
+        }
+
 
 #Login Route
 @app.route('/login', methods=['POST'])
@@ -180,7 +207,7 @@ def login():
         'user_id': user.user_id,
         'email': user.email,
         'user_type': user.user_type,
-        'exp': datetime.datetime.utcnow() + datetime.timedelta(hours=10)  
+        'exp': datetime.utcnow() + timedelta(hours=10)
     }
 
     token = jwt.encode(token_payload, app.config['SECRET_KEY'], algorithm='HS256')
@@ -382,7 +409,7 @@ def add_account():
         contact = data.get('contact', '').strip()
         address = data.get('address', '').strip()
         user_type = data.get('user_type', '').strip()
-        status = 'Active',
+        status = 'Active'
         image = data.get('image', default_image).strip()
 
 
@@ -721,29 +748,29 @@ def update_task_status(task_id):
 @app.route('/task_stats', methods=['GET'])
 def get_task_stats():
     try:
-        # Use date only — no datetime or timezone
-        today = date.today()
-        one_month_ago = today - timedelta(days=30)
+        # Use full datetime instead of just date
+        now = datetime.utcnow()               # current UTC datetime
+        one_month_ago = now - timedelta(days=30)
 
         # Count totals
         total_done = Tasks.query.filter_by(status='Done').count()
         total_ongoing = Tasks.query.filter(Tasks.status.in_(['Pending', 'Work in Progress'])).count()
         total_cancelled = Tasks.query.filter_by(status='Cancelled').count()
 
-        # Count tasks created in the last month (date-only)
+        # Count tasks created in the last month (datetime-aware)
         done_last_month = Tasks.query.filter(
             Tasks.status == 'Done',
-            cast(Tasks.created_at, Date) >= one_month_ago
+            cast(Tasks.created_at, DateTime) >= one_month_ago
         ).count()
 
         ongoing_last_month = Tasks.query.filter(
             Tasks.status.in_(['Pending', 'Work in Progress']),
-            cast(Tasks.created_at, Date) >= one_month_ago
+            cast(Tasks.created_at, DateTime) >= one_month_ago
         ).count()
 
         cancelled_last_month = Tasks.query.filter(
             Tasks.status == 'Cancelled',
-            cast(Tasks.created_at, Date) >= one_month_ago
+            cast(Tasks.created_at, DateTime) >= one_month_ago
         ).count()
 
         # Helper function for growth %
@@ -765,6 +792,77 @@ def get_task_stats():
         print("Error in /task_stats:", e)
         return jsonify({'error': str(e)}), 500
 
+
+@app.route('/tasks/<int:task_id>/comments', methods=['GET'])
+def get_task_comments(task_id):
+    try:
+        # Query all comments for this task, most recent first
+        comments = (
+            db.session.query(TaskComments)
+            .filter_by(task_id=task_id)
+            .order_by(TaskComments.created_at.desc())
+            .all()
+        )
+
+        if not comments:
+            return jsonify([]), 200  # return empty list, not error
+
+        # Serialize each comment including user info
+        result = []
+        for comment in comments:
+            user = Users.query.get(comment.user_id)
+            result.append({
+                "comment_id": comment.comment_id,
+                "task_id": comment.task_id,
+                "user_id": comment.user_id,
+                "user_name": f"{user.firstname} {user.lastname}" if user else "Unknown User",
+                "user_image": user.image if user else None,
+                "message": comment.message,
+                "created_at": comment.created_at.strftime("%Y-%m-%d %H:%M:%S")
+            })
+
+        return jsonify(result), 200
+
+    except Exception as e:
+        print("Error in /tasks/<task_id>/comments:", e)
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/tasks/<int:task_id>/comments', methods=['POST'])
+def add_task_comment(task_id):
+    try:
+        data = request.get_json()
+        user_id = data.get('user_id')
+        message = data.get('message', '').strip()
+
+        if not user_id or not message:
+            return jsonify({'error': 'user_id and message are required'}), 400
+
+        # Verify task exists
+        task = Tasks.query.get(task_id)
+        if not task:
+            return jsonify({'error': 'Task not found'}), 404
+
+        # Verify user exists
+        user = Users.query.get(user_id)
+        if not user:
+            return jsonify({'error': 'User not found'}), 404
+
+        # Create new comment
+        new_comment = TaskComments(
+            task_id=task_id,
+            user_id=user_id,
+            message=message,
+            created_at=datetime.utcnow()
+        )
+        db.session.add(new_comment)
+        db.session.commit()
+
+        return jsonify({'message': 'Comment added successfully'}), 201
+
+    except Exception as e:
+        db.session.rollback()
+        print("Error in POST /tasks/<task_id>/comments:", e)
+        return jsonify({'error': str(e)}), 500
       
 
 

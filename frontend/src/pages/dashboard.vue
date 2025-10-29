@@ -24,19 +24,19 @@
             <div class="flex flex-row">
               <div class="w-[300px] h-[150px] bg-green-50 rounded-lg shadow-md p-5 mr-10 space-y-2">
                 <p class="text-gray-500 font-semibold">Total Tasks Done</p>
-                <h2 class="text-4xl font-bold mt-3">{{ stats.done.count }}</h2>
+                <h2 class="text-4xl font-bold mt-3">{{ stats?.done?.count || 0 }}</h2>
                 <p class="text-sm text-gray-400"><span class="text-green-600">{{ stats.done.growth >= 0 ? '+' : '' }}{{ stats.done.growth }}%</span> 
                  {{ stats.done.growth >= 0 ? 'More' : 'Less' }} than last month </p>
               </div>
               <div class="w-[300px] h-[150px] bg-orange-50 rounded-lg shadow-md p-5 mr-10 space-y-2">
                 <p class="text-gray-500 font-semibold">Ongoing Tasks</p>
-                <h2 class="text-4xl font-bold mt-3">{{ stats.ongoing.count }}</h2>
+                <h2 class="text-4xl font-bold mt-3">{{ stats.ongoing.count || 0 }}</h2>
                 <p class="text-sm text-gray-400"><span class="text-green-600">{{ stats.ongoing.growth >= 0 ? '+' : '' }}{{ stats.ongoing.growth }}%</span>
                   {{ stats.ongoing.growth >= 0 ? 'More' : 'Less' }} than last month</p>
               </div>
               <div class="w-[300px] h-[150px] bg-red-100 rounded-lg shadow-md p-5 space-y-2">
                 <p class="text-gray-500 font-semibold">Cancelled Tasks</p>
-                <h2 class="text-4xl font-bold mt-3">{{ stats.cancelled.count }}</h2>
+                <h2 class="text-4xl font-bold mt-3">{{ stats.cancelled.count || 0 }}</h2>
                 <p class="text-sm text-gray-400"><span class="text-green-600">{{ stats.cancelled.growth >= 0 ? '+' : '' }}{{ stats.cancelled.growth }}%</span>
                    {{ stats.cancelled.growth >= 0 ? 'More' : 'Less' }} than last month</p>
               </div>
@@ -306,7 +306,9 @@
 
   <!---Edit Task Modal-->
     <form @submit.prevent="updateTask" v-if="editTaskForm" @click.self="closeEditTaskForm" class = "fixed inset-0 bg-gray-800/20 overflow-y-auto flex justify-center items-center z-99">
-         <div class="bg-white w-[600px] h-[780px] rounded-md">
+         <div class="bg-white w-[1100px] h-[780px] rounded-md flex p-3">
+          <div class="flex justify-between items-center gap-x-10 w-full">
+          <div class="flex flex-col mt-3">
           <div class="flex justify-between items-center px-7">
            <h1 class = "text-2xl font-semibold py-5 text-gray-600">Update Task</h1>
             <!-- Status -->
@@ -363,7 +365,7 @@
               <textarea
                 name=""
                 id=""
-                class="w-2/3 h-30 bg-gray-100 border-none rounded-lg shadow-md outline-none p-3"
+                class="w-full h-30 bg-gray-100 border-none rounded-lg shadow-md outline-none p-3"
                 placeholder="Enter a task description"
                 v-model="editTaskData.description"
               ></textarea>
@@ -409,8 +411,115 @@
                   Save
                 </button>
              </div>
-
+            </div>
               </div>
+              
+          <!-- MIDDLE DIVIDER -->
+          <div class="border-l-2 border-gray-300 h-full"></div>
+
+          <!-- RIGHT: Comments Section -->
+          <div class="flex flex-col flex-1 p-6 bg-white h-full">
+              <!-- Header -->
+              <h2 class="text-xl font-semibold text-gray-700 mb-4 border-b pb-2">
+                Comments
+              </h2>
+
+              <!-- Comment List -->
+              <div
+                class="flex-1 overflow-y-auto space-y-4 mb-4 p-2 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100"
+              >
+                <!-- Show if there are comments -->
+                <template v-if="taskComments.length > 0">
+                  <div
+                    v-for="comment in taskComments"
+                    :key="comment.comment_id"
+                    class="p-3 bg-gray-100 rounded-lg shadow-sm"
+                  >
+                    <div class="flex items-center space-x-3">
+                      <img
+                        :src="getCommentAvatar(comment)"
+                        class="w-9 h-9 rounded-full border"
+                        :alt="comment.user_name"
+                      />
+                      <div>
+                        <p class="font-medium text-gray-800 text-sm">
+                          {{ comment.user_name }}
+                        </p>
+                        <p class="text-xs text-gray-400">
+                          {{ formatDate(comment.created_at) }}
+                        </p>
+                      </div>
+                    </div>
+                    <p class="text-gray-700 text-sm mt-2 ml-12">{{ comment.message }}</p>
+                  </div>
+                </template>
+
+                <!-- Show if there are NO comments -->
+                <template v-else>
+                  <div
+                    class="flex justify-center items-center text-gray-500 italic py-10"
+                  >
+                    No comments yet. Be the first to comment!
+                  </div>
+                </template>
+              </div>
+
+              <!-- Add Comment (fixed bottom area inside box) -->
+              <div
+                class="flex items-center space-x-2 bg-gray-100 rounded-lg px-3 py-2 shadow-inner mt-auto"
+              >
+                <!-- Image Upload Icon (no functionality yet) -->
+                <button
+                  type="button"
+                  class="p-2 text-gray-500 hover:text-blue-500 transition cursor-pointer"
+                  title="Attach Image"
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    class="w-5 h-5"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                    stroke-width="2"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-9-7h.01M5 7a2 2 0 012-2h10a2 2 0 012 2v10a2 2 0 01-2 2H7a2 2 0 01-2-2V7z"
+                    />
+                  </svg>
+                </button>
+
+                <!-- Comment Input -->
+                <input
+                  type="text"
+                  v-model="newComment"
+                  placeholder="Add a comment..."
+                  class="flex-1 bg-transparent border-none outline-none text-gray-700 placeholder-gray-400"
+                />
+
+                <!-- Send Button -->
+                <button
+                  @click="addComment"
+                  type="button"
+                  class="p-2 bg-blue-500 text-white rounded-full hover:bg-blue-600 transition cursor-pointer"
+                  title="Send Comment"
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    class="w-5 h-5"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                    stroke-width="2"
+                  >
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M5 12h14M12 5l7 7-7 7" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+              
+           </div>
          </div>
     </form>
 
@@ -561,7 +670,9 @@ export default {
         cancelled: { count:0, growth: 0 },
         ongoing: { count:0, growth: 0 },
         done: { count:0, growth: 0 }
-      },  
+      },
+      taskComments: [],
+      newComment: '',
       
     };
   },
@@ -570,6 +681,7 @@ export default {
       this.fetchTaskTypes();
       this.fetchUsers();
       this.fetchStats();
+      this.fetchComments();
     },
   methods: {
     
@@ -711,7 +823,7 @@ export default {
         },
 
         confirmAssignUsers() {
-          // just close modal (don’t send to DB yet)
+          
           this.showAssignModal = false;
         },
         getUserName(userId) {
@@ -720,7 +832,6 @@ export default {
           },
 
           getUserAvatar(user) {
-            // Check if user has a preview (e.g., selected before saving)
             if (user.previewImage) {
               return user.previewImage;
             }
@@ -736,6 +847,9 @@ export default {
             // Default placeholder
             return '/img/default_profile.png';
           },
+          getCommentAvatar(comment) {
+          return this.getUserAvatar({ image: comment.user_image });
+        },
 
 
           async createTask() {
@@ -831,6 +945,8 @@ export default {
                 this.showAlertMessage?.('error', 'Failed to load tasks. Please try again.');
               }
             },
+
+
     showEditTaskForm(task) {
       this.editTaskForm = true;
       this.editTaskData = {
@@ -846,7 +962,11 @@ export default {
 
       this.selectedTaskType = this.editTaskData.task_type_id;
       this.editSelectedUserIds = [...this.editTaskData.assigned_user_ids];
+
+      // ✅ Fetch comments for this specific task
+      this.fetchComments(task.task_id);
     },
+
     closeEditTaskForm() {
       this.editTaskForm = false;
       this.editTaskData = {};
@@ -1002,6 +1122,92 @@ export default {
             console.error('Failed to fetch stats:', error);
           }
         },
+
+        async fetchComments(taskId) {
+            try {
+              const token = sessionStorage.getItem('access_token');
+              if (!token) {
+                console.error('No token found');
+                this.$router.push('/');
+                return;
+              }
+
+              const response = await axios.get(`${this.baseURL}/tasks/${taskId}/comments`, {
+                headers: {
+                  Authorization: `Bearer ${token}`,
+                  'Content-Type': 'application/json'
+                }
+              });
+
+              if (response.status === 200) {
+                // Handle both "no comments" and "has comments" gracefully
+                if (Array.isArray(response.data) && response.data.length > 0) {
+                  this.taskComments = response.data;
+                  console.log(`Comments for task ${taskId}:`, this.taskComments);
+                } else {
+                  this.taskComments = [];
+                  console.log(`No comments found for task ${taskId}.`);
+                }
+              } else {
+                console.warn('Unexpected response format:', response);
+                this.taskComments = [];
+              }
+            } catch (error) {
+              // Only show snackbar for actual network or server errors
+              if (error.response && error.response.status !== 404) {
+                console.error('Error fetching comments:', error);
+                this.showAlertMessage?.('error', 'Failed to load comments. Please try again.');
+              } else {
+                console.log(`No comments available for task ${taskId}.`);
+              }
+              this.taskComments = [];
+            }
+          },
+
+      async addComment() {
+          try {
+            const token = sessionStorage.getItem('access_token');
+            const userId = localStorage.getItem('user_id') || sessionStorage.getItem('user_id');
+
+            if (!token) {
+              console.error('No token found');
+              this.$router.push('/');
+              return;
+            }
+
+            if (!this.newComment.trim()) {
+              this.showAlertMessage('error', 'Comment cannot be empty.');
+              return;
+            }
+
+            const response = await axios.post(
+              `${this.baseURL}/tasks/${this.editTaskData.task_id}/comments`,
+              { 
+                user_id: userId,
+                message: this.newComment.trim()
+              },
+              {
+                headers: {
+                  Authorization: `Bearer ${token}`,
+                  'Content-Type': 'application/json',
+                },
+              }
+            );
+
+            if (response.status === 201) {
+              this.showAlertMessage('success', 'Comment added successfully!');
+              this.newComment = '';
+              await this.fetchComments(this.editTaskData.task_id);
+            } else {
+              this.showAlertMessage('error', 'Failed to add comment. Please try again.');
+            }
+          } catch (error) {
+            console.error('Error adding comment:', error);
+            this.showAlertMessage('error', 'Failed to add comment. Please try again.');
+          }
+        },
+
+      
 
   }
 }
