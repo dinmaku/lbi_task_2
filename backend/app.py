@@ -20,7 +20,7 @@ import traceback
 app = Flask(__name__)
 CORS(app, supports_credentials=True, origins=["http://localhost:5173"])
 
-app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql+pg8000://postgres:1234@localhost/lbi_user_management'
+app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql+pg8000://postgres:meadmin0921@localhost/lbi_user_management'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['SECRET_KEY'] = 'access_token'
 

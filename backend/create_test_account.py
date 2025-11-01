@@ -30,7 +30,7 @@ with app.app_context():
             password=hashed_password,
             contact=contact,
             address=address,
-            user_type=user_type
+            user_type=user_type,
             status=status
         )
         db.session.add(new_user)
