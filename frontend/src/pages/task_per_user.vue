@@ -130,98 +130,156 @@
   </div>
 
 
-  <div
-  v-if="taskModal"
-  @click.self="taskModal = false"
-  class="fixed inset-0 bg-gray-800/20 overflow-y-auto flex justify-center items-center z-[999]"
->
-  <div class="bg-white p-6 rounded-xl shadow-2xl w-full max-w-xl mx-4">
-    <div class="space-y-6">
-      <!-- Header -->
-      <div class="flex justify-between items-center">
-        <h2 class="text-2xl font-bold text-gray-800">Task Details</h2>
-        <span class="text-sm text-white bg-blue-500 px-3 py-1 rounded-full">
-          {{ taskDetails.task_type_name }}
-        </span>
-      </div>
-      <hr class="border-gray-300" />
-
-      <!-- Title & Description -->
-      <div>
-        <h3 class="text-3xl font-semibold text-gray-900 mb-2">
-          {{ taskDetails.title }}
-        </h3>
-        <p class="text-gray-600 text-base">{{ taskDetails.description }}</p>
-      </div>
-
-      <!-- Status -->
-      <div class="flex justify-center items-center gap-3">
-        <p class="text-gray-600 font-semibold w-24">Status</p>
-        <div
-          class="flex items-center gap-2 cursor-pointer hover:bg-gray-100 px-2 py-1 rounded-md transition"
-          @click="openStatusModal"
-        >
-          <span
-            class="w-3 h-3 rounded-full"
-            :class="{
-              'bg-blue-500': taskDetails.status === 'Pending',
-              'bg-yellow-500': taskDetails.status === 'In Progress',
-              'bg-green-500': taskDetails.status === 'Done',
-              'bg-red-500': taskDetails.status === 'Cancelled'
-            }"
-          ></span>
-          <span class="text-gray-800 font-medium capitalize">
-            {{ taskDetails.status }}
-          </span>
-        </div>
-      </div>
-
-      <!-- Assigned Users -->
-      <div>
-        <p class="text-gray-600 font-semibold mb-2">Assigned to:</p>
-        <div class="flex flex-wrap gap-3">
-          <div
-            v-for="user in taskDetails.assigned_users"
-            :key="user.user_id"
-            class="flex items-center gap-2 bg-gray-100 px-3 py-1 rounded-full"
-          >
-            <img
-              :src="getUserAvatar(user)"
-              class="w-6 h-6 rounded-full border-2 border-white"
-            />
-            <span class="text-gray-800 font-medium">
-              {{ user.firstName }} {{ user.lastName }}
+    <div
+      v-if="taskModal"
+      @click.self="taskModal = false"
+      class="fixed inset-0 bg-gray-800/20 overflow-y-auto flex justify-center items-center z-[999]"
+    >
+      <div class="bg-white rounded-xl shadow-2xl w-full max-w-6xl mx-4 my-10 flex flex-col md:flex-row overflow-hidden pb-5">
+        <!-- LEFT: Task Details -->
+        <div class="w-full md:w-1/2 p-6 space-y-6">
+          <!-- Header -->
+          <div class="flex justify-between items-center">
+            <h2 class="text-2xl font-bold text-gray-800">Task Details</h2>
+            <span class="text-sm text-white bg-blue-500 px-3 py-1 rounded-full">
+              {{ taskDetails.task_type_name }}
             </span>
+          </div>
+          <hr class="border-gray-300" />
+
+          <!-- Title & Description -->
+          <div>
+            <h3 class="text-3xl font-semibold text-gray-900 mb-2">
+              {{ taskDetails.title }}
+            </h3>
+            <p class="text-gray-600 text-base">{{ taskDetails.description }}</p>
+          </div>
+
+          <!-- Status -->
+          <div class="flex justify-center items-center">
+            <div
+              class="flex items-center gap-2 cursor-pointer hover:bg-gray-100 px-2 py-1 rounded-md transition"
+              @click="openStatusModal"
+            >
+              <span
+                class="w-3 h-3 rounded-full"
+                :class="{
+                  'bg-blue-500': taskDetails.status === 'Pending',
+                  'bg-yellow-500': taskDetails.status === 'In Progress',
+                  'bg-green-500': taskDetails.status === 'Done',
+                  'bg-red-500': taskDetails.status === 'Cancelled'
+                }"
+              ></span>
+              <span class="text-gray-800 font-medium capitalize">
+                {{ taskDetails.status }}
+              </span>
+            </div>
+          </div>
+
+          <!-- Assigned Users -->
+          <div>
+            <p class="text-gray-600 font-semibold mb-2">Assigned to:</p>
+            <div class="flex flex-wrap gap-3">
+              <div
+                v-for="user in taskDetails.assigned_users"
+                :key="user.user_id"
+                class="flex items-center gap-2 bg-gray-100 px-3 py-1 rounded-full"
+              >
+                <img
+                  :src="getUserAvatar(user)"
+                  class="w-6 h-6 rounded-full border-2 border-white"
+                />
+                <span class="text-gray-800 font-medium">
+                  {{ user.firstName }} {{ user.lastName }}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Dates -->
+          <div class="grid grid-cols-2 gap-4">
+            <div>
+              <p class="text-gray-600 font-semibold">Start Date:</p>
+              <p class="text-gray-900 font-medium">{{ taskDetails.created_at }}</p>
+            </div>
+            <div>
+              <p class="text-gray-600 font-semibold">End Date:</p>
+              <p class="text-gray-900 font-medium">{{ taskDetails.deadline }}</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- RIGHT: Comments Section -->
+        <div class="w-full md:w-1/2 border-t md:border-t-0 md:border-l border-gray-300 flex flex-col p-6">
+          <h2 class="text-xl font-semibold text-gray-700 mb-4 border-b pb-2">Comments</h2>
+
+          <!-- Comment List -->
+          <div class="flex-1 overflow-y-auto space-y-4 mb-4 p-2 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
+            <template v-if="taskComments.length > 0">
+              <div
+                v-for="comment in taskComments"
+                :key="comment.comment_id"
+                class="p-3 bg-gray-100 rounded-lg shadow-sm"
+              >
+                <div class="flex items-center space-x-3">
+                  <img
+                    :src="getCommentAvatar(comment)"
+                    class="w-9 h-9 rounded-full border"
+                    :alt="comment.user_name"
+                  />
+                  <div>
+                    <p class="font-medium text-gray-800 text-sm">
+                      {{ comment.user_name }}
+                    </p>
+                    <p class="text-xs text-gray-400">
+                      {{ formatDate(comment.created_at) }}
+                    </p>
+                  </div>
+                </div>
+                <p class="text-gray-700 text-sm mt-2 ml-12">{{ comment.message }}</p>
+              </div>
+            </template>
+            <template v-else>
+              <div class="flex justify-center items-center text-gray-500 italic py-10">
+                No comments yet. Be the first to comment!
+              </div>
+            </template>
+          </div>
+
+          <!-- Add Comment -->
+          <div class="flex items-center space-x-2 bg-gray-100 rounded-lg px-3 py-2 shadow-inner mt-auto">
+            <button
+              type="button"
+              class="p-2 text-gray-500 hover:text-blue-500 transition"
+              title="Attach Image"
+            >
+              <!-- Icon -->
+              <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-9-7h.01M5 7a2 2 0 012-2h10a2 2 0 012 2v10a2 2 0 01-2 2H7a2 2 0 01-2-2V7z" />
+              </svg>
+            </button>
+
+            <input
+              type="text"
+              v-model="newComment"
+              placeholder="Add a comment..."
+              class="flex-1 bg-transparent border-none outline-none text-gray-700 placeholder-gray-400"
+            />
+
+            <button
+              @click="addComment"
+              type="button"
+              class="p-2 bg-blue-500 text-white rounded-full hover:bg-blue-600 transition"
+              title="Send Comment"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M5 12h14M12 5l7 7-7 7" />
+              </svg>
+            </button>
           </div>
         </div>
       </div>
-
-      <!-- Dates -->
-      <div class="grid grid-cols-2 gap-4">
-        <div>
-          <p class="text-gray-600 font-semibold">Start Date:</p>
-          <p class="text-gray-900 font-medium">{{ taskDetails.created_at }}</p>
-        </div>
-        <div>
-          <p class="text-gray-600 font-semibold">End Date:</p>
-          <p class="text-gray-900 font-medium">{{ taskDetails.deadline }}</p>
-        </div>
-
-
-      </div>
-
-      <!-- Actions -->
-      <div class="flex justify-end">
-        <button
-          @click="taskModal = false"
-          class="bg-gray-600 text-white px-5 py-2 rounded-lg hover:bg-gray-700 transition-transform transform hover:scale-105 cursor-pointer"
-        >
-          Close
-        </button>
-      </div>
     </div>
-  </div>
-</div>
 
     <!-- Change Status Modal -->
     <div
@@ -266,6 +324,24 @@
       </div>
     </div>
 
+
+    <!-- Alert Modal -->
+    <div v-if="showAlert" class="fixed inset-0 bg-gray-800/20 overflow-y-auto flex justify-center items-center z-999">
+      <div :class="['bg-white p-5 rounded-lg shadow-lg w-[400px] border-l-4', alertType === 'success' ? 'border-green-500' : 'border-red-500']">
+        <div class="flex justify-between items-center mb-4">
+          <h3 :class="['text-lg font-semibold', alertType === 'success' ? 'text-green-600' : 'text-red-600']">
+            {{ alertType === 'success' ? 'Success' : 'Error' }}
+          </h3>
+        </div>
+        <p class="text-gray-700">{{ alertMessage }}</p>
+        <div class="flex justify-end mt-4">
+          <button @click="closeAlert" class="px-4 py-2 bg-gray-100 text-gray-700 rounded hover:bg-gray-200 cursor-pointer">
+            Close
+          </button>
+        </div>
+      </div>
+    </div>
+
 </div>
 
 </template>
@@ -301,7 +377,12 @@ export default {
       selectedStatus: '',
       statusOptions: ['In Progress', 'Done',],
       selectedFilter: 'all',
-
+      taskComments: [],
+      newComment: '',
+      showAlert: false,
+      alertMessage: '',
+      alertType: '',
+    
 
     };
   },
@@ -382,6 +463,7 @@ export default {
           // ✅ Keep full user objects instead of just IDs
           assigned_users: task.users || []
         };
+        this.fetchComments(task.task_id);
       },
     
     async fetchTask(userId) {
@@ -417,7 +499,6 @@ export default {
       },
 
        getUserAvatar(user) {
-            // Check if user has a preview (e.g., selected before saving)
             if (user.previewImage) {
               return user.previewImage;
             }
@@ -433,6 +514,10 @@ export default {
             // Default placeholder
             return '/img/default_profile.png';
           },
+          getCommentAvatar(comment) {
+          return this.getUserAvatar({ image: comment.user_image });
+        },
+
 
           formatDate(dateString, format = 'long') {
               if (!dateString) return '';
@@ -481,6 +566,91 @@ export default {
         },
 
 
+         async fetchComments(taskId) {
+            try {
+              const token = sessionStorage.getItem('access_token');
+              if (!token) {
+                console.error('No token found');
+                this.$router.push('/');
+                return;
+              }
+
+              const response = await axios.get(`${this.baseURL}/tasks/${taskId}/comments`, {
+                headers: {
+                  Authorization: `Bearer ${token}`,
+                  'Content-Type': 'application/json'
+                }
+              });
+
+              if (response.status === 200) {
+                // Handle both "no comments" and "has comments" gracefully
+                if (Array.isArray(response.data) && response.data.length > 0) {
+                  this.taskComments = response.data;
+                  console.log(`Comments for task ${taskId}:`, this.taskComments);
+                } else {
+                  this.taskComments = [];
+                  console.log(`No comments found for task ${taskId}.`);
+                }
+              } else {
+                console.warn('Unexpected response format:', response);
+                this.taskComments = [];
+              }
+            } catch (error) {
+              // Only show snackbar for actual network or server errors
+              if (error.response && error.response.status !== 404) {
+                console.error('Error fetching comments:', error);
+                this.showAlertMessage?.('error', 'Failed to load comments. Please try again.');
+              } else {
+                console.log(`No comments available for task ${taskId}.`);
+              }
+              this.taskComments = [];
+            }
+          },
+
+      async addComment() {
+          try {
+            const token = sessionStorage.getItem('access_token');
+            const userId = localStorage.getItem('user_id') || sessionStorage.getItem('user_id');
+
+            if (!token) {
+              console.error('No token found');
+              this.$router.push('/');
+              return;
+            }
+
+            if (!this.newComment.trim()) {
+              this.showAlertMessage('error', 'Comment cannot be empty.');
+              return;
+            }
+
+            const response = await axios.post(
+              `${this.baseURL}/tasks/${this.taskDetails.task_id}/comments`,
+              { 
+                user_id: userId,
+                message: this.newComment.trim()
+              },
+              {
+                headers: {
+                  Authorization: `Bearer ${token}`,
+                  'Content-Type': 'application/json',
+                },
+              }
+            );
+
+            if (response.status === 201) {
+              this.showAlertMessage('success', 'Comment added successfully!');
+              this.newComment = '';
+              await this.fetchComments(this.editTaskData.task_id);
+            } else {
+              this.showAlertMessage('error', 'Failed to add comment. Please try again.');
+            }
+          } catch (error) {
+            console.error('Error adding comment:', error);
+            this.showAlertMessage('error', 'Failed to add comment. Please try again.');
+          }
+        },
+
+
 
   },
   mounted() {
@@ -488,7 +658,10 @@ export default {
         if (userId) {
           this.fetchTask(userId);
         }
+
+    this.fetchComments();
   }
+
 };
 
 

@@ -114,7 +114,7 @@
         <!-- Header -->
         <div class="bg-blue-600 text-white px-4 py-2 rounded-t-lg flex justify-between items-center">
           <h3 class="font-semibold text-lg">Chat</h3>
-          <button @click="chatOpen = false" class="text-white text-xl hover:text-gray-200">&times;</button>
+          <button @click="chatOpen = false" class="text-white text-xl hover:text-gray-200 cursor-pointer">&times;</button>
         </div>
 
         <!-- Users List -->
@@ -141,7 +141,7 @@
               <img :src="selectedUser.avatar || '/img/default_profile.png'" class="w-8 h-8 rounded-full mr-2" />
               <span class="font-semibold text-gray-700">{{ selectedUser.name }}</span>
             </div>
-            <button @click="selectedUser = null" class="text-gray-500 hover:text-gray-700 text-sm">← Back</button>
+            <button @click="selectedUser = null" class="text-gray-500 hover:text-gray-700 text-sm cursor-pointer">← Back</button>
           </div>
 
           <div class="flex-1 overflow-y-auto p-3 bg-gray-50">
@@ -224,17 +224,34 @@ export default {
     return {
       logoutModal: false,
       chatOpen: false,
+      users: [],
       selectedUser: null,
-      newMessage: "",
       messages: [],
-      users: [
-        { id: 1, name: "John Doe", email: "john@example.com", avatar: "" },
-        { id: 2, name: "Jane Smith", email: "jane@example.com", avatar: "" },
-        { id: 3, name: "Admin User", email: "admin@example.com", avatar: "" },
-      ],
+      newMessage: '',
+      currentUserId: null,
+      conversations: [],
 
     };
   },
+
+  mounted() {
+      const token = localStorage.getItem('access_token');
+      if (token) {
+        try {
+          const payload = JSON.parse(atob(token.split('.')[1]));
+          this.currentUserId = payload.user_id;
+          console.log("✅ Current user ID:", this.currentUserId);
+        } catch (e) {
+          console.error('Invalid token format');
+        }
+      }
+
+      // ✅ Fetch all users for the left panel
+      this.fetchUsers();
+
+      // ✅ Fetch all conversations for this user
+      this.fetchConversations();
+    },
 
   methods: {
     showLogoutConfirmModal() {
@@ -252,25 +269,152 @@ export default {
     isActive(route) {
       return this.$route.path === route;
     },
-     toggleChat() {
+      toggleChat() {
       this.chatOpen = !this.chatOpen;
+      if (this.chatOpen && this.users.length === 0) {
+        this.fetchConversations();
+      }
     },
-    selectUser(user) {
-      this.selectedUser = user;
-      this.messages = [
-        { id: 1, text: "Hey there!", fromSelf: false },
-        { id: 2, text: "Hello! How are you?", fromSelf: true },
-      ];
+
+   async fetchConversations() {
+        try {
+          const res = await fetch(`http://localhost:5000/conversations/${this.currentUserId}`);
+          const data = await res.json();
+
+          if (res.ok) {
+            // ✅ Filter out self, and map conversations properly
+           this.users = data
+              .filter(c => c.other_user.user_id !== this.currentUserId) // 🧠 filter out self
+              .map((c) => ({
+                id: c.other_user.user_id,
+                name: `${c.other_user.firstName} ${c.other_user.lastName}`,
+                avatar: c.other_user.image
+                  ? `http://localhost:5000/static/uploads/${c.other_user.image}`
+                  : '/img/default_profile.png',
+                email: c.other_user.email,
+                conversation_id: c.conversation_id,
+              }));
+              console.log("👤 Current user ID:", this.currentUserId);
+              console.log("🧠 Raw data from backend:", data);
+          } else {
+            console.warn('No conversations found:', data.message);
+            this.users = [];
+          }
+        } catch (error) {
+          console.error('Error fetching conversations:', error);
+        }
+      },
+
+    async selectUser(user) {
+      try {
+        // 👇 Fetch (or create) the conversation between the two users
+        const res = await fetch(`http://localhost:5000/conversations/${this.currentUserId}/${user.id}`);
+        const data = await res.json();
+
+        if (res.ok) {
+          // 👇 Save the selected user
+          this.selectedUser = user;
+
+          // 👇 Attach the conversation_id returned from the backend
+          this.selectedUser.conversation_id = data.conversation_id;
+
+          console.log('✅ Using conversation ID:', data.conversation_id);
+
+          // 👇 Fetch all messages for that conversation
+          await this.fetchMessages(data.conversation_id);
+        } else {
+          console.error('Failed to get or create conversation:', data);
+        }
+      } catch (err) {
+        console.error('Error selecting user:', err);
+      }
     },
-    sendMessage() {
-      if (!this.newMessage.trim()) return;
-      this.messages.push({
-        id: Date.now(),
-        text: this.newMessage,
-        fromSelf: true,
-      });
-      this.newMessage = "";
+
+    async fetchMessages(conversationId) {
+        try {
+          const res = await fetch(`http://localhost:5000/messages/${conversationId}`);
+          const data = await res.json();
+
+          if (res.ok) {
+            this.messages = data
+              .map((m) => ({
+                id: m.message_id,
+                text: m.message,
+                fromSelf: m.sender.user_id === this.currentUserId,
+                created_at: new Date(m.created_at)
+              }))
+              // ✅ Ensure proper chronological order (oldest → newest)
+              .sort((a, b) => a.created_at - b.created_at);
+          } else {
+            this.messages = [];
+            console.warn('No messages found:', data.message);
+          }
+        } catch (error) {
+          console.error('Error fetching messages:', error);
+        }
+      },
+
+    async sendMessage() {
+      if (!this.newMessage.trim() || !this.selectedUser) return;
+
+      const messageData = {
+        conversation_id: this.selectedUser.conversation_id,
+        sender_id: this.currentUserId,
+        message: this.newMessage,
+      };
+
+      try {
+        const res = await fetch('http://localhost:5000/messages', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(messageData),
+        });
+
+        const data = await res.json();
+
+        if (res.ok) {
+          this.messages.push({
+            id: data.message_id,
+            text: data.message,
+            fromSelf: true,
+            created_at: data.created_at,
+          });
+          this.newMessage = '';
+        } else {
+          console.error('Failed to send message:', data.error);
+        }
+      } catch (error) {
+        console.error('Error sending message:', error);
+      }
     },
+   
+   async fetchUsers() {
+      try {
+        const res = await fetch('http://localhost:5000/users');
+        const data = await res.json();
+
+        if (res.ok) {
+          this.users = data
+            // 🧠 Exclude the currently logged-in user
+            .filter(u => u.user_id !== this.currentUserId)
+            .map(u => ({
+              id: u.user_id,
+              name: `${u.firstName} ${u.lastName}`,
+              email: u.email,
+              avatar: u.image
+                ? (u.image.startsWith('http')
+                    ? u.image
+                    : `http://localhost:5000/static/uploads/${u.image}`)
+                : '/img/default_profile.png'
+            }));
+        } else {
+          console.error('Error fetching users:', data.error);
+        }
+      } catch (err) {
+        console.error('Fetch users error:', err);
+      }
+    },
+
   },
   computed: {
     isAdmin() {

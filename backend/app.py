@@ -20,7 +20,7 @@ import traceback
 app = Flask(__name__)
 CORS(app, supports_credentials=True, origins=["http://localhost:5173"])
 
-app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql+pg8000://postgres:meadmin0921@localhost/lbi_user_management'
+app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql+pg8000://postgres:1234@localhost/lbi_user_management'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['SECRET_KEY'] = 'access_token'
 
@@ -176,6 +176,57 @@ class TaskComments(db.Model):
             'user_name': f"{self.user.firstname} {self.user.lastname}" if self.user else None,
             'user_image': self.user.image if self.user else None
         }
+
+class Conversation(db.Model):
+    __tablename__ = 'conversations'
+
+    conversation_id = db.Column(db.Integer, primary_key=True)
+    user_id_1 = db.Column(db.Integer, db.ForeignKey('users.user_id', ondelete='CASCADE'), nullable=False)
+    user_id_2 = db.Column(db.Integer, db.ForeignKey('users.user_id', ondelete='CASCADE'), nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    # Relationships
+    user1 = db.relationship('Users', foreign_keys=[user_id_1], backref='conversations_started')
+    user2 = db.relationship('Users', foreign_keys=[user_id_2], backref='conversations_received')
+    messages = db.relationship('Message', backref='conversation', cascade='all, delete-orphan')
+
+    __table_args__ = (
+        db.UniqueConstraint('user_id_1', 'user_id_2', name='unique_users_pair'),
+    )
+
+    def to_dict(self):
+        return {
+            "conversation_id": self.conversation_id,
+            "user_id_1": self.user_id_1,
+            "user_id_2": self.user_id_2,
+            "created_at": self.created_at.isoformat()
+        }
+
+
+class Message(db.Model):
+    __tablename__ = 'messages'
+
+    message_id = db.Column(db.Integer, primary_key=True)
+    conversation_id = db.Column(db.Integer, db.ForeignKey('conversations.conversation_id', ondelete='CASCADE'), nullable=False)
+    sender_id = db.Column(db.Integer, db.ForeignKey('users.user_id', ondelete='CASCADE'), nullable=False)
+    message = db.Column(db.Text)
+    image = db.Column(db.Text)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    sender = db.relationship('Users', backref='sent_messages')
+
+    def to_dict(self):
+        return {
+            "message_id": self.message_id,
+            "conversation_id": self.conversation_id,
+            "sender_id": self.sender_id,
+            "message": self.message,
+            "image": self.image,
+            "created_at": self.created_at.isoformat()
+        }
+
+
+
 
 
 #Login Route
@@ -632,7 +683,7 @@ def create_task():
             description=description,
             deadline=deadline,
             task_type_id=task_type_id,
-            created_at=date.today(),
+            created_at=datetime.today(),
             status='Pending'
         )
         db.session.add(new_task)
@@ -863,6 +914,139 @@ def add_task_comment(task_id):
         db.session.rollback()
         print("Error in POST /tasks/<task_id>/comments:", e)
         return jsonify({'error': str(e)}), 500
+
+
+@app.route('/conversations/<int:user_id>', methods=['GET'])
+def get_user_conversations(user_id):
+    try:
+        # Get all conversations where the user is either user1 or user2
+        conversations = Conversation.query.filter(
+            (Conversation.user_id_1 == user_id) | (Conversation.user_id_2 == user_id)
+        ).all()
+
+        if not conversations:
+            return jsonify({'message': 'No conversations found'}), 404
+
+        conversation_list = []
+        for convo in conversations:
+            # Determine the other user in the conversation
+            other_user_id = convo.user_id_2 if convo.user_id_1 == user_id else convo.user_id_1
+            other_user = Users.query.get(other_user_id)
+
+            conversation_list.append({
+                'conversation_id': convo.conversation_id,
+                'other_user': {
+                    'user_id': other_user.user_id,
+                    'firstname': other_user.firstname,
+                    'lastname': other_user.lastname,
+                    'image': other_user.image
+                },
+                'created_at': convo.created_at
+            })
+
+        return jsonify(conversation_list), 200
+
+    except Exception as e:
+        print("Error in GET /conversations/<user_id>:", e)
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/conversations/<int:user1_id>/<int:user2_id>', methods=['GET'])
+def get_or_create_conversation(user1_id, user2_id):
+    try:
+        convo = Conversation.query.filter(
+            db.or_(
+                db.and_(Conversation.user_id_1 == user1_id, Conversation.user_id_2 == user2_id),
+                db.and_(Conversation.user_id_1 == user2_id, Conversation.user_id_2 == user1_id)
+            )
+        ).first()
+
+        # Create if not exists
+        if not convo:
+            convo = Conversation(user_id_1=user1_id, user_id_2=user2_id)
+            db.session.add(convo)
+            db.session.commit()
+
+        print(f"✅ Conversation found/created: {convo.conversation_id} for users {user1_id} & {user2_id}")
+
+        return jsonify({
+            'conversation_id': convo.conversation_id,
+            'user_id_1': convo.user_id_1,
+            'user_id_2': convo.user_id_2
+        }), 200
+
+    except Exception as e:
+        print("Error in get_or_create_conversation:", e)
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/messages/<int:conversation_id>', methods=['GET'])
+def get_conversation_messages(conversation_id):
+    try:
+        messages = (
+            Message.query
+            .filter_by(conversation_id=conversation_id)
+            .order_by(Message.created_at.asc())  # FIFO order
+            .all()
+        )
+
+        if not messages:
+            return jsonify({'message': 'No messages found'}), 404
+
+        message_list = []
+        for msg in messages:
+            sender = Users.query.get(msg.sender_id)
+            message_list.append({
+                'message_id': msg.message_id,
+                'sender': {
+                    'user_id': sender.user_id,
+                    'firstname': sender.firstname,
+                    'lastname': sender.lastname,
+                    'image': sender.image
+                },
+                'message': msg.message,
+                'image': msg.image,
+                'created_at': msg.created_at.isoformat() 
+            })
+
+        return jsonify(message_list), 200
+
+    except Exception as e:
+        print("Error in GET /messages/<conversation_id>:", e)
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/messages', methods=['POST'])
+def send_message():
+    try:
+        data = request.get_json()
+        conversation_id = data.get('conversation_id')
+        sender_id = data.get('sender_id')
+        message_text = data.get('message', None)
+        image = data.get('image', None)
+
+        if not conversation_id or not sender_id:
+            return jsonify({'error': 'Missing required fields'}), 400
+
+        new_message = Message(
+            conversation_id=conversation_id,
+            sender_id=sender_id,
+            message=message_text,
+            image=image
+        )
+
+        db.session.add(new_message)
+        db.session.commit()
+
+        return jsonify({
+            'message_id': new_message.message_id,
+            'message': new_message.message,
+            'created_at': new_message.created_at
+        }), 201
+
+    except Exception as e:
+        print("Error in POST /messages:", e)
+        return jsonify({'error': str(e)}), 500
+
       
 
 

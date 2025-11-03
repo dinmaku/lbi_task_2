@@ -956,7 +956,7 @@ export default {
         status: task.status,
         deadline: task.deadline ? new Date(task.deadline).toISOString().split('T')[0] : '',
         task_type_id: task.task_type?.task_type_id || null,
-        assigned_users: task.users || [], // full user objects, not just IDs
+        assigned_users: task.users || [], 
         assigned_user_ids: task.users ? task.users.map(u => u.user_id) : [],
       };
 
