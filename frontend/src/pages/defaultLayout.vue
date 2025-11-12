@@ -128,7 +128,7 @@
           >
             <img :src="user.avatar || '/img/default_profile.png'" class="w-10 h-10 rounded-full mr-3" />
             <div>
-              <p class="font-medium text-gray-700">{{ user.name }}</p>
+              <p class="font-medium text-gray-700">{{ user.name || 'Loading...' }}</p>
               <p class="text-xs text-gray-400">{{ user.email }}</p>
             </div>
           </div>
@@ -388,19 +388,20 @@ export default {
       }
     },
    
-   async fetchUsers() {
+  async fetchUsers() {
       try {
         const res = await fetch('http://localhost:5000/users');
         const data = await res.json();
 
-        if (res.ok) {
+        console.log('Fetched users:', data); // ✅ check backend response
+
+        if (res.ok && Array.isArray(data)) {
           this.users = data
-            // 🧠 Exclude the currently logged-in user
             .filter(u => u.user_id !== this.currentUserId)
             .map(u => ({
               id: u.user_id,
-              name: `${u.firstName} ${u.lastName}`,
-              email: u.email,
+              name: `${u.firstName || ''} ${u.lastName || ''}`.trim(), // ✅ avoids 'undefined undefined'
+              email: u.email || 'No email provided',
               avatar: u.image
                 ? (u.image.startsWith('http')
                     ? u.image
@@ -408,10 +409,12 @@ export default {
                 : '/img/default_profile.png'
             }));
         } else {
-          console.error('Error fetching users:', data.error);
+          console.error('Error fetching users:', data.error || 'Unexpected response');
+          this.users = [];
         }
       } catch (err) {
         console.error('Fetch users error:', err);
+        this.users = [];
       }
     },
 

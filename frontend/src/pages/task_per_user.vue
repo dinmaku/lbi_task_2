@@ -135,7 +135,7 @@
       @click.self="taskModal = false"
       class="fixed inset-0 bg-gray-800/20 overflow-y-auto flex justify-center items-center z-[999]"
     >
-      <div class="bg-white rounded-xl shadow-2xl w-full max-w-6xl mx-4 my-10 flex flex-col md:flex-row overflow-hidden pb-5">
+      <div class="bg-white rounded-xl shadow-2xl w-full h-[800px] max-w-6xl mx-4 my-10 flex flex-col md:flex-row overflow-hidden pb-5">
         <!-- LEFT: Task Details -->
         <div class="w-full md:w-1/2 p-6 space-y-6">
           <!-- Header -->
@@ -210,35 +210,49 @@
         </div>
 
         <!-- RIGHT: Comments Section -->
-        <div class="w-full md:w-1/2 border-t md:border-t-0 md:border-l border-gray-300 flex flex-col p-6">
+        <div class="flex flex-col flex-1 p-6 bg-white h-full">
           <h2 class="text-xl font-semibold text-gray-700 mb-4 border-b pb-2">Comments</h2>
 
           <!-- Comment List -->
           <div class="flex-1 overflow-y-auto space-y-4 mb-4 p-2 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
-            <template v-if="taskComments.length > 0">
-              <div
-                v-for="comment in taskComments"
-                :key="comment.comment_id"
-                class="p-3 bg-gray-100 rounded-lg shadow-sm"
-              >
-                <div class="flex items-center space-x-3">
-                  <img
-                    :src="getCommentAvatar(comment)"
-                    class="w-9 h-9 rounded-full border"
-                    :alt="comment.user_name"
-                  />
-                  <div>
-                    <p class="font-medium text-gray-800 text-sm">
-                      {{ comment.user_name }}
+           <template v-if="taskComments.length > 0">
+                  <div
+                    v-for="comment in taskComments"
+                    :key="comment.comment_id"
+                    class="p-3 bg-gray-100 rounded-lg shadow-sm"
+                  >
+                    <div class="flex items-center space-x-3">
+                      <img
+                        :src="getCommentAvatar(comment)"
+                        class="w-9 h-9 rounded-full border"
+                        :alt="comment.user_name"
+                      />
+                      <div>
+                        <p class="font-medium text-gray-800 text-sm">
+                          {{ comment.user_name }}
+                        </p>
+                        <p class="text-xs text-gray-400">
+                          {{ formatDate(comment.created_at) }}
+                        </p>
+                      </div>
+                    </div>
+
+                    <!-- Message -->
+                    <p class="text-gray-700 text-left text-sm mt-2 ml-12" v-if="comment.message">
+                      {{ comment.message }}
                     </p>
-                    <p class="text-xs text-gray-400">
-                      {{ formatDate(comment.created_at) }}
-                    </p>
+
+                    <!-- Image (optional) -->
+                    <div v-if="comment.image" class="mt-2 ml-12">
+                      <img
+                        :src="comment.image"
+                        alt="Comment Image"
+                        class="rounded-lg max-h-60 border cursor-pointer hover:opacity-90 transition"
+                        @click="openImageModal(comment.image)"
+                      />
+                    </div>
                   </div>
-                </div>
-                <p class="text-gray-700 text-sm mt-2 ml-12">{{ comment.message }}</p>
-              </div>
-            </template>
+                </template>
             <template v-else>
               <div class="flex justify-center items-center text-gray-500 italic py-10">
                 No comments yet. Be the first to comment!
@@ -247,36 +261,87 @@
           </div>
 
           <!-- Add Comment -->
-          <div class="flex items-center space-x-2 bg-gray-100 rounded-lg px-3 py-2 shadow-inner mt-auto">
-            <button
-              type="button"
-              class="p-2 text-gray-500 hover:text-blue-500 transition"
-              title="Attach Image"
-            >
-              <!-- Icon -->
-              <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-9-7h.01M5 7a2 2 0 012-2h10a2 2 0 012 2v10a2 2 0 01-2 2H7a2 2 0 01-2-2V7z" />
-              </svg>
-            </button>
+          <div class="bg-gray-100 rounded-lg px-3 py-2 shadow-inner mt-auto" @paste="handlePaste">
+                
+                <!-- Preview image (shown above input area) -->
+                <div v-if="commentImagePreview" class="relative w-28 mb-3">
+                  <img
+                    :src="commentImagePreview"
+                    alt="Comment Preview"
+                    class="rounded-lg border object-cover w-28 h-28 shadow-md"
+                  />
+                  <button
+                    type="button"
+                    @click="removeCommentImage"
+                    class="absolute top-1 right-1 bg-red-500 text-white rounded-full w-5 h-5 flex justify-center items-center hover:bg-red-600 transition cursor-pointer"
+                    title="Remove Image"
+                  >
+                    &times;
+                  </button>
+                </div>
 
-            <input
-              type="text"
-              v-model="newComment"
-              placeholder="Add a comment..."
-              class="flex-1 bg-transparent border-none outline-none text-gray-700 placeholder-gray-400"
-            />
+                <!-- File input (hidden) -->
+                <input
+                  type="file"
+                  ref="commentImageInput"
+                  accept="image/*"
+                  class="hidden"
+                  @change="handleCommentImage"
+                />
 
-            <button
-              @click="addComment"
-              type="button"
-              class="p-2 bg-blue-500 text-white rounded-full hover:bg-blue-600 transition"
-              title="Send Comment"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M5 12h14M12 5l7 7-7 7" />
-              </svg>
-            </button>
-          </div>
+                <!-- Input row -->
+                <div class="flex items-center space-x-2">
+                  <!-- Image upload icon -->
+                  <button
+                    type="button"
+                    class="p-2 text-gray-500 hover:text-blue-500 transition cursor-pointer"
+                    title="Attach Image"
+                    @click="$refs.commentImageInput.click()"
+                  >
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      class="w-5 h-5"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                      stroke-width="2"
+                    >
+                      <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-9-7h.01M5 7a2 2 0 012-2h10a2 2 0 012 2v10a2 2 0 01-2 2H7a2 2 0 01-2-2V7z"
+                      />
+                    </svg>
+                  </button>
+
+                  <!-- Comment input -->
+                  <input
+                    type="text"
+                    v-model="newComment"
+                    placeholder="Add a comment..."
+                    class="flex-1 bg-transparent border-none outline-none text-gray-700 placeholder-gray-400"
+                  />
+
+                  <!-- Send button -->
+                  <button
+                    @click="addComment"
+                    type="button"
+                    class="p-2 bg-blue-500 text-white rounded-full hover:bg-blue-600 transition cursor-pointer"
+                    title="Send Comment"
+                  >
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      class="w-5 h-5"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                      stroke-width="2"
+                    >
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M5 12h14M12 5l7 7-7 7" />
+                    </svg>
+                  </button>
+                </div>
+              </div>
         </div>
       </div>
     </div>
@@ -342,6 +407,14 @@
       </div>
     </div>
 
+    <div
+            v-if="showImageModal"
+            class="fixed inset-0 bg-gray-800/50 flex justify-center items-center z-999"
+            @click="closeImageModal"
+          >
+            <img :src="modalImageUrl" class="max-h-[90vh] rounded-lg shadow-lg" />
+          </div>
+
 </div>
 
 </template>
@@ -382,6 +455,10 @@ export default {
       showAlert: false,
       alertMessage: '',
       alertType: '',
+      commentImage: null,
+      commentImagePreview: null,
+      showImageModal: false,
+      modalImageUrl: null,
     
 
     };
@@ -420,6 +497,28 @@ export default {
 
   },
   methods: {
+
+     showAlertMessage(type, message) {
+          this.alertType = type;
+          this.alertMessage = message;
+          this.showAlert = true;
+        },
+        closeAlert() {
+          this.showAlert = false;
+          this.alertMessage = '';
+          this.alertType = '';
+        },
+    
+    openImageModal(url) {
+      this.modalImageUrl = url;
+      this.showImageModal = true;
+    },
+
+    closeImageModal() {
+      this.showImageModal = false;
+      this.modalImageUrl = null;
+    },
+
     applyFilter() {
       this.currentTasksPage = 1 // reset to page 1 whenever filter changes
     },
@@ -585,7 +684,7 @@ export default {
               if (response.status === 200) {
                 // Handle both "no comments" and "has comments" gracefully
                 if (Array.isArray(response.data) && response.data.length > 0) {
-                  this.taskComments = response.data;
+                  this.taskComments = [...response.data].reverse();
                   console.log(`Comments for task ${taskId}:`, this.taskComments);
                 } else {
                   this.taskComments = [];
@@ -618,21 +717,33 @@ export default {
               return;
             }
 
-            if (!this.newComment.trim()) {
+            if (!this.newComment.trim() && !this.commentImage) {
               this.showAlertMessage('error', 'Comment cannot be empty.');
               return;
             }
 
+            const formData = new FormData();
+            formData.append('user_id', userId);
+            formData.append('message', this.newComment.trim());
+            if (this.commentImage) {
+              formData.append('image', this.commentImage);
+            }
+
+            // ✅ FIX HERE
+            const taskId = this.taskDetails?.task_id || this.$route.params.task_id;
+
+            if (!taskId) {
+              console.error('No task ID found.');
+              this.showAlertMessage('error', 'Cannot add comment: missing task ID.');
+              return;
+            }
+
             const response = await axios.post(
-              `${this.baseURL}/tasks/${this.taskDetails.task_id}/comments`,
-              { 
-                user_id: userId,
-                message: this.newComment.trim()
-              },
+              `${this.baseURL}/tasks/${taskId}/comments`,
+              formData,
               {
                 headers: {
                   Authorization: `Bearer ${token}`,
-                  'Content-Type': 'application/json',
                 },
               }
             );
@@ -640,15 +751,68 @@ export default {
             if (response.status === 201) {
               this.showAlertMessage('success', 'Comment added successfully!');
               this.newComment = '';
-              await this.fetchComments(this.editTaskData.task_id);
+              this.commentImage = null;
+              this.commentImagePreview = null;
+              await this.fetchComments(taskId);
             } else {
               this.showAlertMessage('error', 'Failed to add comment. Please try again.');
             }
           } catch (error) {
-            console.error('Error adding comment:', error);
+            console.error('Error adding comment:', error.response?.data || error);
             this.showAlertMessage('error', 'Failed to add comment. Please try again.');
           }
         },
+
+
+
+          handleCommentImage(event) {
+              const file = event.target.files[0];
+              if (file) {
+                this.commentImage = file;
+
+                // Preview
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                  this.commentImagePreview = e.target.result;
+                };
+                reader.readAsDataURL(file);
+            }
+          },
+
+          removeCommentImage() {
+            this.commentImage = null;
+            this.commentImagePreview = null;
+          },
+
+          handlePaste(event) {
+            const items = (event.clipboardData || event.originalEvent.clipboardData).items;
+            for (const item of items) {
+              if (item.type.indexOf('image') !== -1) {
+                const file = item.getAsFile();
+                this.commentImage = file;
+
+                // Preview
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                  this.commentImagePreview = e.target.result;
+                };
+                reader.readAsDataURL(file);
+              }
+            }
+          },
+
+      openImageModal(url) {
+        this.modalImageUrl = url;
+        this.showImageModal = true;
+      },
+
+      closeImageModal() {
+        this.showImageModal = false;
+        this.modalImageUrl = null;
+      },
+
+
+
 
 
 

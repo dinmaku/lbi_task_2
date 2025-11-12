@@ -429,7 +429,7 @@
                 class="flex-1 overflow-y-auto space-y-4 mb-4 p-2 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100"
               >
                 <!-- Show if there are comments -->
-                <template v-if="taskComments.length > 0">
+               <template v-if="taskComments.length > 0">
                   <div
                     v-for="comment in taskComments"
                     :key="comment.comment_id"
@@ -450,73 +450,110 @@
                         </p>
                       </div>
                     </div>
-                    <p class="text-gray-700 text-sm mt-2 ml-12">{{ comment.message }}</p>
-                  </div>
-                </template>
 
-                <!-- Show if there are NO comments -->
-                <template v-else>
-                  <div
-                    class="flex justify-center items-center text-gray-500 italic py-10"
-                  >
-                    No comments yet. Be the first to comment!
+                    <!-- Message -->
+                    <p class="text-gray-700 text-left text-sm mt-2 ml-12" v-if="comment.message">
+                      {{ comment.message }}
+                    </p>
+
+                    <!-- Image (optional) -->
+                    <div v-if="comment.image" class="mt-2 ml-12">
+                      <img
+                        :src="comment.image"
+                        alt="Comment Image"
+                        class="rounded-lg max-h-60 border cursor-pointer hover:opacity-90 transition"
+                        @click="openImageModal(comment.image)"
+                      />
+                    </div>
                   </div>
                 </template>
               </div>
 
               <!-- Add Comment (fixed bottom area inside box) -->
-              <div
-                class="flex items-center space-x-2 bg-gray-100 rounded-lg px-3 py-2 shadow-inner mt-auto"
-              >
-                <!-- Image Upload Icon (no functionality yet) -->
-                <button
-                  type="button"
-                  class="p-2 text-gray-500 hover:text-blue-500 transition cursor-pointer"
-                  title="Attach Image"
-                >
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    class="w-5 h-5"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                    stroke-width="2"
+              <div class="bg-gray-100 rounded-lg px-3 py-2 shadow-inner mt-auto" @paste="handlePaste">
+                
+                <!-- Preview image (shown above input area) -->
+                <div v-if="commentImagePreview" class="relative w-28 mb-3">
+                  <img
+                    :src="commentImagePreview"
+                    alt="Comment Preview"
+                    class="rounded-lg border object-cover w-28 h-28 shadow-md"
+                  />
+                  <button
+                    type="button"
+                    @click="removeCommentImage"
+                    class="absolute top-1 right-1 bg-red-500 text-white rounded-full w-5 h-5 flex justify-center items-center hover:bg-red-600 transition cursor-pointer"
+                    title="Remove Image"
                   >
-                    <path
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-9-7h.01M5 7a2 2 0 012-2h10a2 2 0 012 2v10a2 2 0 01-2 2H7a2 2 0 01-2-2V7z"
-                    />
-                  </svg>
-                </button>
+                    &times;
+                  </button>
+                </div>
 
-                <!-- Comment Input -->
+                <!-- File input (hidden) -->
                 <input
-                  type="text"
-                  v-model="newComment"
-                  placeholder="Add a comment..."
-                  class="flex-1 bg-transparent border-none outline-none text-gray-700 placeholder-gray-400"
+                  type="file"
+                  ref="commentImageInput"
+                  accept="image/*"
+                  class="hidden"
+                  @change="handleCommentImage"
                 />
 
-                <!-- Send Button -->
-                <button
-                  @click="addComment"
-                  type="button"
-                  class="p-2 bg-blue-500 text-white rounded-full hover:bg-blue-600 transition cursor-pointer"
-                  title="Send Comment"
-                >
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    class="w-5 h-5"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                    stroke-width="2"
+                <!-- Input row -->
+                <div class="flex items-center space-x-2">
+                  <!-- Image upload icon -->
+                  <button
+                    type="button"
+                    class="p-2 text-gray-500 hover:text-blue-500 transition cursor-pointer"
+                    title="Attach Image"
+                    @click="$refs.commentImageInput.click()"
                   >
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M5 12h14M12 5l7 7-7 7" />
-                  </svg>
-                </button>
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      class="w-5 h-5"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                      stroke-width="2"
+                    >
+                      <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-9-7h.01M5 7a2 2 0 012-2h10a2 2 0 012 2v10a2 2 0 01-2 2H7a2 2 0 01-2-2V7z"
+                      />
+                    </svg>
+                  </button>
+
+                  <!-- Comment input -->
+                  <input
+                    type="text"
+                    v-model="newComment"
+                    placeholder="Add a comment..."
+                    class="flex-1 bg-transparent border-none outline-none text-gray-700 placeholder-gray-400"
+                  />
+
+                  <!-- Send button -->
+                  <button
+                    @click="addComment"
+                    type="button"
+                    class="p-2 bg-blue-500 text-white rounded-full hover:bg-blue-600 transition cursor-pointer"
+                    title="Send Comment"
+                  >
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      class="w-5 h-5"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                      stroke-width="2"
+                    >
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M5 12h14M12 5l7 7-7 7" />
+                    </svg>
+                  </button>
+                </div>
               </div>
+
+          
+
             </div>
               
            </div>
@@ -610,10 +647,15 @@
           </button>
         </div>
       </div>
+    
     </div>
-        
- 
-
+    <div
+            v-if="showImageModal"
+            class="fixed inset-0 bg-gray-800/50 flex justify-center items-center z-999"
+            @click="closeImageModal"
+          >
+            <img :src="modalImageUrl" class="max-h-[90vh] rounded-lg shadow-lg" />
+          </div>
   </div>
 </template>
 
@@ -673,6 +715,10 @@ export default {
       },
       taskComments: [],
       newComment: '',
+      commentImage: null,
+      commentImagePreview: null,
+      showImageModal: false,
+      modalImageUrl: null,
       
     };
   },
@@ -683,9 +729,20 @@ export default {
       this.fetchStats();
       this.fetchComments();
     },
-  methods: {
-    
 
+
+  methods: {
+
+    openImageModal(url) {
+      this.modalImageUrl = url;
+      this.showImageModal = true;
+    },
+
+    closeImageModal() {
+      this.showImageModal = false;
+      this.modalImageUrl = null;
+    },
+    
    getColorClass(title) {
       if (this.colorMap[title]) return this.colorMap[title];
       const randomColor = COLORS[Math.floor(Math.random() * COLORS.length)];
@@ -850,6 +907,42 @@ export default {
           getCommentAvatar(comment) {
           return this.getUserAvatar({ image: comment.user_image });
         },
+
+        handleCommentImage(event) {
+          const file = event.target.files[0];
+           if (file) {
+            this.commentImage = file;
+
+            // Preview
+            const reader = new FileReader();
+            reader.onload = (e) => {
+              this.commentImagePreview = e.target.result;
+            };
+            reader.readAsDataURL(file);
+        }
+      },
+
+      removeCommentImage() {
+        this.commentImage = null;
+        this.commentImagePreview = null;
+      },
+
+      handlePaste(event) {
+        const items = (event.clipboardData || event.originalEvent.clipboardData).items;
+        for (const item of items) {
+          if (item.type.indexOf('image') !== -1) {
+            const file = item.getAsFile();
+            this.commentImage = file;
+
+            // Preview
+            const reader = new FileReader();
+            reader.onload = (e) => {
+              this.commentImagePreview = e.target.result;
+            };
+            reader.readAsDataURL(file);
+          }
+        }
+      },
 
 
           async createTask() {
@@ -1140,9 +1233,8 @@ export default {
               });
 
               if (response.status === 200) {
-                // Handle both "no comments" and "has comments" gracefully
-                if (Array.isArray(response.data) && response.data.length > 0) {
-                  this.taskComments = response.data;
+                 if (Array.isArray(response.data) && response.data.length > 0) {
+                  this.taskComments = [...response.data].reverse();
                   console.log(`Comments for task ${taskId}:`, this.taskComments);
                 } else {
                   this.taskComments = [];
@@ -1163,49 +1255,55 @@ export default {
               this.taskComments = [];
             }
           },
+          
+     async addComment() {
+        try {
+          const token = sessionStorage.getItem('access_token');
+          const userId = localStorage.getItem('user_id') || sessionStorage.getItem('user_id');
 
-      async addComment() {
-          try {
-            const token = sessionStorage.getItem('access_token');
-            const userId = localStorage.getItem('user_id') || sessionStorage.getItem('user_id');
+          if (!token) {
+            console.error('No token found');
+            this.$router.push('/');
+            return;
+          }
 
-            if (!token) {
-              console.error('No token found');
-              this.$router.push('/');
-              return;
-            }
+          if (!this.newComment.trim() && !this.commentImage) {
+            this.showAlertMessage('error', 'Comment cannot be empty.');
+            return;
+          }
 
-            if (!this.newComment.trim()) {
-              this.showAlertMessage('error', 'Comment cannot be empty.');
-              return;
-            }
+          const formData = new FormData();
+          formData.append('user_id', userId);
+          formData.append('message', this.newComment.trim());
+          if (this.commentImage) {
+            formData.append('image', this.commentImage);
+          }
 
-            const response = await axios.post(
-              `${this.baseURL}/tasks/${this.editTaskData.task_id}/comments`,
-              { 
-                user_id: userId,
-                message: this.newComment.trim()
-              },
-              {
-                headers: {
-                  Authorization: `Bearer ${token}`,
-                  'Content-Type': 'application/json',
-                },
+          const response = await axios.post(
+            `${this.baseURL}/tasks/${this.editTaskData.task_id}/comments`,
+            formData,
+            {
+              headers: {
+                Authorization: `Bearer ${token}`
+               
               }
-            );
-
-            if (response.status === 201) {
-              this.showAlertMessage('success', 'Comment added successfully!');
-              this.newComment = '';
-              await this.fetchComments(this.editTaskData.task_id);
-            } else {
-              this.showAlertMessage('error', 'Failed to add comment. Please try again.');
             }
-          } catch (error) {
-            console.error('Error adding comment:', error);
+          );
+
+          if (response.status === 201) {
+            this.showAlertMessage('success', 'Comment added successfully!');
+            this.newComment = '';
+            this.commentImage = null;
+            this.commentImagePreview = null;
+            await this.fetchComments(this.editTaskData.task_id);
+          } else {
             this.showAlertMessage('error', 'Failed to add comment. Please try again.');
           }
-        },
+        } catch (error) {
+          console.error('Error adding comment:', error.response?.data || error);
+          this.showAlertMessage('error', 'Failed to add comment. Please try again.');
+        }
+      },
 
       
 

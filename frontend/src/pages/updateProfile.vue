@@ -245,7 +245,7 @@ export default {
       changingPassword: false,
       previewImage: null,
       allowedFileTypes: ['image/jpeg', 'image/png', 'image/gif', 'image/webp'],
-      maxFileSize: 5 * 1024 * 1024, // 5MB
+      maxFileSize: 5 * 1024 * 1024,
       apiBaseUrl: 'http://127.0.0.1:5000',
       passwordForm: {
         currentPassword: '',
@@ -269,7 +269,6 @@ export default {
 
         return '/img/default_profile.png';
         }
-
   },
   mounted() {
     this.fetchUserProfile();

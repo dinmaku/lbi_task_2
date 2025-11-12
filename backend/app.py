@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, url_for
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import cast, Date
 from flask_cors import CORS
@@ -12,7 +12,7 @@ import jwt
 from datetime import datetime, timedelta, timezone
 import re
 import logging
-import os
+import uuid, os
 import traceback
 
 
@@ -160,6 +160,7 @@ class TaskComments(db.Model):
     task_id = db.Column(db.Integer, db.ForeignKey('tasks.task_id'), nullable=False)
     user_id = db.Column(db.Integer, db.ForeignKey('users.user_id'), nullable=False)
     message = db.Column(db.Text, nullable=False)
+    image = db.Column(db.String(225), nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     # Relationships
@@ -174,7 +175,8 @@ class TaskComments(db.Model):
             'message': self.message,
             'created_at': self.created_at.isoformat(),
             'user_name': f"{self.user.firstname} {self.user.lastname}" if self.user else None,
-            'user_image': self.user.image if self.user else None
+            'user_image': self.user.image if self.user else None,
+            'image': self.image
         }
 
 class Conversation(db.Model):
@@ -862,6 +864,15 @@ def get_task_comments(task_id):
         result = []
         for comment in comments:
             user = Users.query.get(comment.user_id)
+
+            user_image_url = None
+            if user and user.image:
+                user_image_url = url_for('static', filename=f'uploads/{user.image}', _external=True)
+
+            comment_image_url = None
+            if comment.image:
+                comment_image_url = url_for('static', filename=f'uploads/{comment.image}', _external=True)
+
             result.append({
                 "comment_id": comment.comment_id,
                 "task_id": comment.task_id,
@@ -869,6 +880,7 @@ def get_task_comments(task_id):
                 "user_name": f"{user.firstname} {user.lastname}" if user else "Unknown User",
                 "user_image": user.image if user else None,
                 "message": comment.message,
+                "image": comment_image_url,
                 "created_at": comment.created_at.strftime("%Y-%m-%d %H:%M:%S")
             })
 
@@ -881,28 +893,46 @@ def get_task_comments(task_id):
 @app.route('/tasks/<int:task_id>/comments', methods=['POST'])
 def add_task_comment(task_id):
     try:
-        data = request.get_json()
-        user_id = data.get('user_id')
-        message = data.get('message', '').strip()
+        user_id = request.form.get('user_id')
+        message = request.form.get('message', '').strip()
+        image = request.files.get('image')
 
-        if not user_id or not message:
-            return jsonify({'error': 'user_id and message are required'}), 400
+        print("DEBUG user_id:", user_id)
+        print("DEBUG message:", message)
+        print("DEBUG image:", image)
 
-        # Verify task exists
+        if not user_id or (not message and not image):
+            return jsonify({'error': 'user_id and message or image are required'}), 400
+
+        if 'image' in request.files:
+            image = request.files['image']
+            if image.filename != '':
+                filename = f"{uuid.uuid4().hex}_{secure_filename(image.filename)}"
+                filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+                image.save(filepath)
+                image_filename = filename
+                image_url = url_for('static', filename=f'uploads/{filename}', _external=True)
+            else:
+                image_filename = None
+                image_url = None
+        else:
+            image_filename = None
+            image_url = None
+
+
         task = Tasks.query.get(task_id)
         if not task:
             return jsonify({'error': 'Task not found'}), 404
 
-        # Verify user exists
         user = Users.query.get(user_id)
         if not user:
             return jsonify({'error': 'User not found'}), 404
 
-        # Create new comment
         new_comment = TaskComments(
             task_id=task_id,
             user_id=user_id,
             message=message,
+            image=image_filename,
             created_at=datetime.utcnow()
         )
         db.session.add(new_comment)
@@ -914,7 +944,6 @@ def add_task_comment(task_id):
         db.session.rollback()
         print("Error in POST /tasks/<task_id>/comments:", e)
         return jsonify({'error': str(e)}), 500
-
 
 @app.route('/conversations/<int:user_id>', methods=['GET'])
 def get_user_conversations(user_id):
