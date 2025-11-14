@@ -91,6 +91,8 @@ export default {
               localStorage.setItem('email', userProfile.email) || sessionStorage.setItem('email', userProfile.email);
               localStorage.setItem('user_type', userProfile.user_type);
               localStorage.setItem('access_token', access_token);
+              sessionStorage.setItem('firstName', userProfile.firstName);
+              sessionStorage.setItem('lastName', userProfile.lastName);
               console.log('Stored user profile:', userProfile);
             }
 
@@ -100,7 +102,7 @@ export default {
 
           
             if (userProfile.user_type === 'admin') {
-              this.$router.push('/dashboard');
+              this.$router.push('/projects');
             } else {
               this.$router.push('/task-per-user');
             }

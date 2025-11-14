@@ -5,6 +5,7 @@ import Dashboard from '../pages/dashboard.vue'
 import ManageUsers from '../pages/manage_users.vue'
 import UpdateProfile from '../pages/updateProfile.vue'
 import TaskPerUser from '../pages/task_per_user.vue'
+import Projects from '../pages/projects.vue'
 
 
 const routes = [
@@ -41,6 +42,12 @@ const routes = [
         name: 'TaskPerUser',
         component: TaskPerUser,
         meta: { requiresAuth  : true} 
+      },
+      {
+        path: 'projects',
+        name: 'Projects',
+        component: Projects,
+        meta: { requiresAuth  : true,}
       }
     ]
   }

@@ -65,6 +65,7 @@ class Tasks(db.Model):
     deadline = db.Column(db.DateTime, nullable=True)
     status = db.Column(db.String(225), nullable=True, default='Pending')
     task_type_id = db.Column(db.Integer, db.ForeignKey('task_type.task_type_id'))
+    project_id = db.Column(db.Integer, db.ForeignKey('projects.project_id'), nullable=True)
 
     # Relationship to TaskType
     task_type = db.relationship('TaskType', back_populates='tasks')
@@ -78,6 +79,9 @@ class Tasks(db.Model):
     # One-to-many relationship to TaskComments
     comments = db.relationship('TaskComments', back_populates='task', cascade='all, delete-orphan')
 
+    #One to many relationship to Projects
+    project = db.relationship('Projects', back_populates='tasks')
+
     def serialize(self):
         return {
             'task_id': self.task_id,
@@ -88,7 +92,8 @@ class Tasks(db.Model):
             'status': self.status,
             'task_type': self.task_type.serialize() if self.task_type else None,
             'task_type_name': self.task_type.task_type_name if self.task_type else None,
-            'users': [user.serialize() for user in self.users]
+            'users': [user.serialize() for user in self.users],
+            'project': self.project.serialize() if self.project else None
         }
 
     def serialize_basic(self):
@@ -227,6 +232,29 @@ class Message(db.Model):
             "created_at": self.created_at.isoformat()
         }
 
+class Projects(db.Model):
+    __tablename__ = 'projects'
+
+    project_id = db.Column(db.Integer, primary_key=True)
+    project_name = db.Column(db.String(225), nullable=False)
+    description = db.Column(db.Text, nullable=True)
+    start_date = db.Column(db.DateTime, default=datetime.utcnow)
+    end_date = db.Column(db.DateTime, nullable=True)
+    status = db.Column(db.String(100), default='Active')
+
+    # One-to-many relationship to Tasks
+    tasks = db.relationship('Tasks', back_populates='project', cascade='all, delete-orphan')
+
+    def serialize(self):
+        return {
+            'project_id': self.project_id,
+            'project_name': self.project_name,
+            'description': self.description,
+            'start_date': self.start_date.isoformat() if self.start_date else None,
+            'end_date': self.end_date.isoformat() if self.end_date else None,
+            'status': self.status,
+            'tasks': [task.serialize_basic() for task in self.tasks]
+        }
 
 
 
@@ -897,10 +925,6 @@ def add_task_comment(task_id):
         message = request.form.get('message', '').strip()
         image = request.files.get('image')
 
-        print("DEBUG user_id:", user_id)
-        print("DEBUG message:", message)
-        print("DEBUG image:", image)
-
         if not user_id or (not message and not image):
             return jsonify({'error': 'user_id and message or image are required'}), 400
 
@@ -988,7 +1012,6 @@ def get_or_create_conversation(user1_id, user2_id):
                 db.and_(Conversation.user_id_1 == user2_id, Conversation.user_id_2 == user1_id)
             )
         ).first()
-
         # Create if not exists
         if not convo:
             convo = Conversation(user_id_1=user1_id, user_id_2=user2_id)

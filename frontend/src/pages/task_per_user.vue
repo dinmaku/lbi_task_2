@@ -40,9 +40,11 @@
       </div>
     </div>
 
+  <div class="flex justify-between items-center mr-8">
     <div class="relative inline-block text-left">
         <label class="text-gray-700 font-semibold mr-2">Filter:</label>
-
+        
+        <div class="relative inline-block">
         <select
             v-model="selectedFilter"
             @change="applyFilter"
@@ -61,73 +63,148 @@
             </svg>
         </div>
         </div>
-
-
-  <div class="relative shadow-md sm:rounded-xl w-full max-w-[1600px] h-[200] mt-2 font-inter mb-10">
-    <div class="overflow-x-auto">
-      <table class="w-full text-sm text-left rtl:text-right text-gray-500 dark:text-gray-400 mb-4 max-h-30 table-fixed">
-      <thead class="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-400">
-        <tr>
-          <th scope="col" class="w-16 px-2 py-3">#</th>
-          <th scope="col" class="w-52 px-2 py-3">Task Name</th>
-          <th scope="col" class="w-52 px-2 py-3">Type</th>
-          <th scope="col" class="w-52 px-2 py-3">Assigned</th>
-          <th scope="col" class="w-40 px-2 py-3">Deadline</th>
-          <th scope="col" class="w-36 px-2 py-3">Status</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr
-            v-for="(tasks, index) in paginatedTasks"
-            :key="tasks.no"
-            @click="showTaskModal(tasks)"
-            class="border-b dark:border-gray-700 odd:bg-white odd:dark:bg-gray-900 even:bg-gray-50 even:dark:bg-gray-800
-               hover:bg-gray-100 dark:hover:bg-gray-600 cursor-pointer transition duration-500 ease-in-out">
-          <th scope="row" class="w-16 px-2 py-4 font-inter text-gray-900 whitespace-nowrap dark:text-white">{{tasks.dummyIndex }}</th>
-          <td class="w-52 px-2 py-4 truncate">{{ tasks.title }}</td>
-          <td class="w-52 px-2 py-4 truncate">{{ tasks.task_type_name }}</td>
-            <td class="w-40 px-2 py-4">
-              <div class="flex -space-x-2">
-                <img
-                  v-for="user in tasks.users"
-                  :key="user.user_id"
-                  :src="getUserAvatar(user)"
-                  :alt="user.username"
-                  class="w-10 h-10 rounded-full border-2 border-white hover:scale-110 transition"
-                  :title="`${user.firstName} ${user.lastName}`"
-                />
-              </div>
-            </td>
-          <td class="w-36 px-2 py-4 truncate text-red-600">{{ formatDate(tasks.deadline) }}</td>
-          <td
-              class="w-36 px-2 py-4 truncate font-semibold capitalize"
-              :class="{
-                'text-blue-500': tasks.status === 'Pending',
-                'text-yellow-500': tasks.status === 'In Progress',
-                'text-green-500': tasks.status === 'Done',
-                'text-red-500': tasks.status === 'Cancelled'
-              }"
-            >
-              {{ tasks.status }}
-            </td>
-        </tr>
-      </tbody>
-    </table>
-
-      <!-- Pagination Controls -->
-      <div class="flex justify-center space-x-2 mt-4 mb-6">
-        <button @click="prevTasksPage" :disabled="currentTasksPage === 1" 
-            class="px-3 py-1 bg-[#27A9F5] text-white rounded-md hover:bg-[#0297F0] disabled:opacity-50 text-sm cursor-pointer">Previous</button>
-        <button v-for="page in totalTasksPages" :key="page" @click="changeTasksPage(page)" 
-            :class="{'bg-[#27A9F5]': currentTasksPage === page, 'bg-gray-300': currentTasksPage !== page}" 
-            class="px-3 py-1 text-white rounded-md hover:bg-[#0297F0] text-xs cursor-pointer">
-          {{ page }}
-        </button>
-        <button @click="nextTasksPage" :disabled="currentTasksPage === totalTasksPages" 
-            class="px-3 py-1 bg-[#27A9F5] text-white rounded-md hover:bg-[#0297F0] disabled:opacity-50 text-xs cursor-pointer">Next</button>
       </div>
-    </div>
+     
+      <div class="flex flex-row items-center bg-white px-4 py-2 rounded-lg border border-gray-300 shadow-sm gap-2">
+          <button
+            @click="activeView = 'list'"
+            class="rounded-md text-lg font-semibold px-6 py-1 cursor-pointer transition"
+            :class="activeView === 'list'
+              ? 'bg-blue-500 text-white'
+              : 'bg-gray-100 text-gray-800 hover:bg-gray-200'"
+          >
+            List
+          </button>
+
+          <button
+            @click="activeView = 'board'"
+            class="rounded-md text-lg font-semibold px-4 py-1 cursor-pointer transition"
+            :class="activeView === 'board'
+              ? 'bg-blue-500 text-white'
+              : 'bg-gray-100 text-gray-800 hover:bg-gray-200'"
+          >
+            Board
+          </button>
+        </div>
+
+
   </div>
+
+      <!-- Conditional rendering -->
+        <div class="mt-4">
+          <!-- LIST VIEW -->
+          <div v-if="activeView === 'list'">
+            <!-- Your table code -->
+            <div class="relative shadow-md sm:rounded-xl w-full max-w-[1600px] mt-2 font-inter mb-10">
+              <div class="overflow-x-auto">
+                <table class="w-full text-sm text-left text-gray-500 dark:text-gray-400 mb-4 table-fixed">
+                  <thead class="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-400">
+                    <tr>
+                      <th class="w-16 px-2 py-3">#</th>
+                      <th class="w-52 px-2 py-3">Task Name</th>
+                      <th class="w-52 px-2 py-3">Type</th>
+                      <th class="w-52 px-2 py-3">Assigned</th>
+                      <th class="w-40 px-2 py-3">Deadline</th>
+                      <th class="w-36 px-2 py-3">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr
+                      v-for="(tasks, index) in paginatedTasks"
+                      :key="tasks.no"
+                      @click="showTaskModal(tasks)"
+                      class="border-b dark:border-gray-700 odd:bg-white odd:dark:bg-gray-900 even:bg-gray-50 even:dark:bg-gray-800
+                            hover:bg-gray-100 dark:hover:bg-gray-600 cursor-pointer transition duration-500 ease-in-out"
+                    >
+                      <th class="w-16 px-2 py-4 text-gray-900 dark:text-white">{{ tasks.dummyIndex }}</th>
+                      <td class="w-52 px-2 py-4 truncate">{{ tasks.title }}</td>
+                      <td class="w-52 px-2 py-4 truncate">{{ tasks.task_type_name }}</td>
+                      <td class="w-40 px-2 py-4">
+                        <div class="flex -space-x-2">
+                          <img
+                            v-for="user in tasks.users"
+                            :key="user.user_id"
+                            :src="getUserAvatar(user)"
+                            :alt="user.username"
+                            class="w-10 h-10 rounded-full border-2 border-white hover:scale-110 transition"
+                            :title="`${user.firstName} ${user.lastName}`"
+                          />
+                        </div>
+                      </td>
+                      <td class="w-36 px-2 py-4 truncate text-red-600">{{ formatDate(tasks.deadline) }}</td>
+                      <td
+                        class="w-36 px-2 py-4 truncate font-semibold capitalize"
+                        :class="{
+                          'text-blue-500': tasks.status === 'Pending',
+                          'text-yellow-500': tasks.status === 'In Progress',
+                          'text-green-500': tasks.status === 'Done',
+                          'text-red-500': tasks.status === 'Cancelled'
+                        }"
+                      >
+                        {{ tasks.status }}
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+
+                <!-- Pagination -->
+                <div class="flex justify-center space-x-2 mt-4 mb-6">
+                  <button @click="prevTasksPage" :disabled="currentTasksPage === 1"
+                    class="px-3 py-1 bg-[#27A9F5] text-white rounded-md hover:bg-[#0297F0] disabled:opacity-50 text-sm">
+                    Previous
+                  </button>
+                  <button v-for="page in totalTasksPages" :key="page" @click="changeTasksPage(page)"
+                    :class="{'bg-[#27A9F5]': currentTasksPage === page, 'bg-gray-300': currentTasksPage !== page}"
+                    class="px-3 py-1 text-white rounded-md hover:bg-[#0297F0] text-xs">
+                    {{ page }}
+                  </button>
+                  <button @click="nextTasksPage" :disabled="currentTasksPage === totalTasksPages"
+                    class="px-3 py-1 bg-[#27A9F5] text-white rounded-md hover:bg-[#0297F0] disabled:opacity-50 text-xs">
+                    Next
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- BOARD VIEW -->
+          <div v-else-if="activeView === 'board'">
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+              <div
+                v-for="task in paginatedTasks"
+                :key="task.no"
+                @click="showTaskModal(task)"
+                class="bg-white rounded-lg shadow-md p-4 cursor-pointer hover:shadow-lg transition space-y-5"
+              >
+                <h3 class="font-semibold text-gray-900 mb-2 truncate">{{ task.title }}</h3>
+                <p class="text-sm text-gray-600 mb-2">Type: {{ task.task_type_name }}</p>
+                <p class="text-sm text-gray-600 mb-2">Deadline: {{ formatDate(task.deadline) }}</p>
+                <div class="flex items-center justify-center space-x-2">
+                          <img
+                            v-for="user in task.users"
+                            :key="user.user_id"
+                            :src="getUserAvatar(user)"
+                            :alt="user.username"
+                            class="w-10 h-10 rounded-full border-2 border-white hover:scale-110 transition"
+                            :title="`${user.firstName} ${user.lastName}`"
+                          />
+                        </div>
+                <p
+                  class="text-sm font-semibold capitalize"
+                  :class="{
+                    'text-blue-500': task.status === 'Pending',
+                    'text-yellow-500': task.status === 'In Progress',
+                    'text-green-500': task.status === 'Done',
+                    'text-red-500': task.status === 'Cancelled'
+                  }"
+                >
+                  {{ task.status }}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          </div>
 
 
     <div
@@ -459,6 +536,7 @@ export default {
       commentImagePreview: null,
       showImageModal: false,
       modalImageUrl: null,
+      activeView: 'list'
     
 
     };

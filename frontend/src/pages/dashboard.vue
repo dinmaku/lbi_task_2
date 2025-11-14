@@ -776,7 +776,7 @@ export default {
             }
           });
 
-          // ✅ store the result (make sure `taskTypes` exists in your data() or state)
+         
           this.taskTypes = response.data;
 
           console.log('Task types fetched:', this.taskTypes);
@@ -784,6 +784,8 @@ export default {
           console.error('Error fetching task types:', error);
         }
       },
+
+
       selectTaskType(type) {
         if (this.editTaskForm) {
           // Editing mode
