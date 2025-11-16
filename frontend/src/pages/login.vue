@@ -101,7 +101,7 @@ export default {
             this.$emit('loginSuccess');
 
           
-            if (userProfile.user_type === 'admin') {
+            if (userProfile.user_type === 'admin' || userProfile.user_type === 'client') {
               this.$router.push('/projects');
             } else {
               this.$router.push('/task-per-user');

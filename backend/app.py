@@ -703,6 +703,7 @@ def create_task():
         deadline = data.get('deadline')
         task_type_id = data.get('task_type_id')
         assigned_user_ids = data.get('assigned_user_ids', [])
+        project_id = data.get('project_id')
 
        
         if not title or not description or not task_type_id or not assigned_user_ids:
@@ -713,6 +714,7 @@ def create_task():
             description=description,
             deadline=deadline,
             task_type_id=task_type_id,
+            project_id=project_id,
             created_at=datetime.today(),
             status='Pending'
         )
@@ -1097,6 +1099,41 @@ def send_message():
 
     except Exception as e:
         print("Error in POST /messages:", e)
+        return jsonify({'error': str(e)}), 500
+    
+
+@app.route('/projects/create', methods=['POST'])
+def create_project():
+    try:
+        data = request.get_json()
+
+        project_name = data.get('project_name')
+        if not project_name:
+            return jsonify({'error': 'Project name is required'}), 400
+
+        description = data.get('description')
+        start_date_str = data.get('start_date')
+        end_date_str = data.get('end_date')
+        status = data.get('status', 'Active')
+
+        start_date = datetime.fromisoformat(start_date_str) if start_date_str else datetime.utcnow()
+        end_date = datetime.fromisoformat(end_date_str) if end_date_str else None
+
+        new_project = Projects(
+            project_name=project_name,
+            description=description,
+            start_date=start_date,
+            end_date=end_date,
+            status=status
+        )
+
+        db.session.add(new_project)
+        db.session.commit()
+
+        return jsonify({'message': 'Project created successfully', 'project': new_project.serialize()}), 201
+
+    except Exception as e:
+        db.session.rollback()
         return jsonify({'error': str(e)}), 500
 
       

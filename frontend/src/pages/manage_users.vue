@@ -133,6 +133,12 @@
         ]" @click="showTable = 'Admin'">
           Admin
         </button>
+        <button :class="[ 
+          'flex justify-center items-center w-28 h-10 m-2 font-inter font-semibold rounded-lg shadow-lg transition-transform duration-300 transform hover:scale-105 cursor-pointer', 
+          { 'bg-gray-800 text-white': showTable === 'Client', 'bg-white': showTable !== 'Client' } 
+        ]" @click="showTable = 'Client'">
+          Client
+        </button>
       </div>
       <button class = "mr-2 w-32 h-10 bg-[#27A9F5] font-semibold text-gray-100 font-inter rounded-md shadow-lg 
       transition-transform duration-300 transform hover:scale-105 cursor-pointer" @click="addUserBtn">
@@ -256,6 +262,64 @@
     </div>
   </div>
 
+    <!--Client Table-->
+  <div v-if="showTable === 'Client'" class="relative shadow-md sm:rounded-xl w-full max-w-[1600px] h-[200] ml-5 mt-2 font-inter mb-10">
+    <div class="overflow-x-auto">
+      <table class="w-full text-sm text-left rtl:text-right text-gray-500 dark:text-gray-400 mb-4 max-h-30 table-fixed">
+      <thead class="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-400">
+        <tr>
+          <th scope="col" class="w-16 px-2 py-3">#</th>
+          <th scope="col" class="w-52 px-2 py-3">Name</th>
+          <th scope="col" class="w-52 px-2 py-3">Email</th>
+          <th scope="col" class="w-40 px-2 py-3">Contact</th>
+          <th scope="col" class="w-36 px-2 py-3">Address</th>
+          <th scope="col" class="w-28 px-2 py-3">Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr
+            v-for="(client, index) in paginatedClients"
+            :key="client.no"
+            class="border-b dark:border-gray-700 odd:bg-white odd:dark:bg-gray-900 even:bg-gray-50 even:dark:bg-gray-800">
+          <th scope="row" class="w-16 px-2 py-3 font-inter text-gray-900 whitespace-nowrap dark:text-white">{{ client.dummyIndex }}</th>
+          <td class="w-52 px-2 py-3 truncate">{{ client.firstName }} {{ client.lastName }}</td>
+          <td class="w-52 px-2 py-3 truncate">{{ client.email }}</td>
+          <td class="w-40 px-2 py-3 truncate">{{ client.contact }}</td>
+          <td class="w-36 px-2 py-3 truncate">{{ client.address }}</td>
+
+          <td class="w-28 px-2 py-3">
+            <button class="p-2 hover:opacity-80 transform hover:scale-110 transition-transform duration-200 cursor-pointer" 
+            @click="openUpdateUserForm(index)" 
+            title="Update Client Info">
+            <img src="../assets/icons/edit.png" alt="Update" class="w-5 h-5">
+           
+              </button>
+            <button class="p-2 hover:opacity-80 transform hover:scale-110 transition-transform duration-200 cursor-pointer" 
+            @click="openStatusConfirmModal(client)" 
+            title="Set User to Inactive">
+            <img src="../assets/icons/deactivate.png" alt="Update" class="w-5 h-5">
+           
+              </button>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+
+      <!-- Pagination Controls -->
+      <div class="flex justify-center space-x-2 mt-4 mb-6">
+        <button @click="prevClientPage" :disabled="currentClientPage === 1" 
+            class="px-3 py-1 bg-[#27A9F5] text-white rounded-md hover:bg-[#0297F0] disabled:opacity-50 text-sm cursor-pointer">Previous</button>
+        <button v-for="page in totalClientPages" :key="page" @click="changeClientPage(page)" 
+            :class="{'bg-[#27A9F5]': currentClientPage === page, 'bg-gray-300': currentClientPage !== page}" 
+            class="px-3 py-1 text-white rounded-md hover:bg-[#0297F0] text-xs cursor-pointer">
+          {{ page }}
+        </button>
+        <button @click="nextClientPage" :disabled="currentClientPage === totalClientPages" 
+            class="px-3 py-1 bg-[#27A9F5] text-white rounded-md hover:bg-[#0297F0] disabled:opacity-50 text-xs cursor-pointer">Next</button>
+      </div>
+    </div>
+  </div>
+
    <!-- Add User Form -->
  <form v-if="addUserForm" @submit.prevent="handleRegister" class="fixed inset-0 bg-gray-800/40 z-40 overflow-y-auto flex justify-center items-center" @click.self="closeAddUserForm">
   <div class="bg-white w-[550px] p-5 rounded-lg shadow-lg overflow-y-auto">
@@ -307,6 +371,8 @@
           <option value="" disabled class="text-gray-500">Select Account Type</option>
           <option value="staff">Staff</option>
           <option value="admin">Admin</option>
+          <option value="client">Client</option>
+          
         </select>
       </div>
       <!-- Confirm Button -->
@@ -374,6 +440,7 @@
           <option value="" disabled class="text-gray-500">Select Account Type</option>
           <option value="staff">Staff</option>
           <option value="admin">Admin</option>
+          <option value="client">Client</option>
         </select>
       </div>
       <!-- Confirm Button -->
@@ -409,6 +476,8 @@ export default {
       searchAccount: '',
       currentAdminPage: 1,
       adminsPerPage: 5,
+      currentClientPage: 1,
+      clientsPerPage: 5,
 
       addUserForm: false,
       pendingUser: null,
@@ -430,6 +499,7 @@ export default {
 
       staffs: [],
       admins: [],
+      clients: [],
       inactiveUsers: [],
 
       updateUserForm: false,
@@ -493,6 +563,34 @@ export default {
             dummyIndex: start + index + 1
           })).slice(start, end);
         },
+
+
+        filteredClients() {
+          return this.clients.filter(client => 
+              client.fullName?.toLowerCase().includes(this.searchAccount.toLowerCase()) ||
+              client.email?.toLowerCase().includes(this.searchAccount.toLowerCase())
+          );
+      },
+
+    totalClientPages() {
+        return Math.ceil(this.filteredClients.length / this.clientsPerPage);
+    },
+
+     paginatedClients() {   
+          if (!Array.isArray(this.filteredClients)) {
+              return []; 
+          }
+
+          const start = (this.currentClientPage - 1) * this.clientsPerPage;
+          const end = start + this.clientsPerPage;
+
+          return this.filteredClients
+              .slice(start, end)
+              .map((client, index) => ({
+                  ...client,
+                  dummyIndex: start + index + 1
+              }));
+      },
       },
   methods: {
    
@@ -522,6 +620,20 @@ export default {
     changeAdminPage(page) {
       this.currentAdminPage = page;
     },
+    prevClientPage() {
+        if (this.currentClientPage > 1) {
+            this.currentClientPage--;
+        }
+    },
+    nextClientPage() {
+        if (this.currentClientPage < this.totalClientPages) {
+            this.currentClientPage++;
+        }
+    },
+    changeClientPage(page) {
+        this.currentClientPage = page;
+    },
+
 
     addUserBtn() {
       this.addUserForm = true;
@@ -634,9 +746,11 @@ export default {
                 // Separate admins and staff based on user_type
                 this.admins = filteredActiveUsers.filter(user => user.user_type.toLowerCase() === 'admin');
                 this.staffs = filteredActiveUsers.filter(user => user.user_type.toLowerCase() === 'staff');
+                this.clients = filteredActiveUsers.filter(user => user.user_type.toLowerCase() === 'client');
                 
                 console.log('Filtered Active Admins:', this.admins);
                 console.log('Filtered Active Staff:', this.staffs);
+                console.log('Filtered Active Staff:', this.client);
             }
         } catch (error) {
             console.error('Error fetching users:', error);
