@@ -1131,10 +1131,8 @@ export default {
             this.showAlertMessage('success', response.data.message);
           }
 
-          // Refresh tasks (if you have a function for it)
           await this.fetchTasks();
 
-          // Close the modal and reset form
           this.editTaskForm = false;
           this.editTaskData = {
             task_id: null,
@@ -1155,12 +1153,12 @@ export default {
 
           const date = new Date(dateString);
 
-          if (isNaN(date)) return dateString; // fallback for invalid date
+          if (isNaN(date)) return dateString;
 
           const options =
             format === 'short'
-              ? { year: 'numeric', month: 'short', day: 'numeric' } // e.g. "Oct 20, 2025"
-              : { year: 'numeric', month: 'long', day: 'numeric' }; // e.g. "October 20, 2025"
+              ? { year: 'numeric', month: 'short', day: 'numeric' } 
+              : { year: 'numeric', month: 'long', day: 'numeric' }; 
 
           return date.toLocaleDateString('en-US', options);
         },
@@ -1186,7 +1184,7 @@ export default {
               throw new Error(result.error || 'Failed to update status');
             }
 
-            // ✅ Update UI instantly
+          
             this.editTaskData.status = this.selectedStatus;
             this.showStatusModal = false;
             await this.fetchTasks(sessionStorage.getItem('user_id')); 

@@ -102,6 +102,9 @@
         <div class="flex justify-start w-52 h-20 bg-white rounded-lg shadow-lg px-2 items-center border-l-2 border-blue-400 space-x-5">
             <h2 class="font-inter text-4xl font-bold mb-0"> {{ admins.length }} <span class = "text-sm antialiased text-gray-600">admin</span></h2>
         </div>
+        <div class="flex justify-start w-52 h-20 bg-white rounded-lg shadow-lg px-2 items-center border-l-2 border-blue-400 space-x-5">
+            <h2 class="font-inter text-4xl font-bold mb-0"> {{ clients.length }} <span class = "text-sm antialiased text-gray-600">client</span></h2>
+        </div>
         <form class="flex items-center w-[300px] mt-9">
               <label for="voice-search" class="sr-only">Search</label>
               <div class="relative w-full">
@@ -784,24 +787,35 @@ export default {
       this.alertMessage = '';
     },
 
-    openUpdateUserForm(index) {
-    
-    const user = this.showTable === 'Staffs' ? this.staffs[index] : this.admins[index];
-    
-    
-    this.selectedUser = {
-        user_id: user.user_id, 
-        firstname: user.firstname || user.firstName, 
-        lastname: user.lastname || user.lastName,   
-        email: user.email,
-        username: user.username,
-        contact: user.contact,
-        address: user.address,
-        user_type: user.user_type 
-    };
-    
-    this.updateUserForm = true;
-  },
+   openUpdateUserForm(index) {
+          let user;
+
+          if (this.showTable === 'Staffs') {
+            user = this.staffs?.[index];
+          } else if (this.showTable === 'Admin') {
+            user = this.admins?.[index];
+          } else if (this.showTable === 'Client') {
+            user = this.clients?.[index];
+          }
+
+          if (!user) {
+            console.warn('User not found for index:', index);
+            return;
+          }
+
+          this.selectedUser = {
+            user_id: user.user_id,
+            firstname: user.firstname || user.firstName,
+            lastname: user.lastname || user.lastName,
+            email: user.email,
+            username: user.username,
+            contact: user.contact,
+            address: user.address,
+            user_type: user.user_type
+          };
+
+          this.updateUserForm = true;
+        },
 
   closeUpdateUserForm() {
     this.updateUserForm = false;

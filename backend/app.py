@@ -648,6 +648,7 @@ def get_inactive_users():
             'error': 'Failed to fetch inactive users'
         }), 500
 
+#Task Type API
 @app.route('/task_types', methods=['GET'])
 def get_task_types():
     try:
@@ -655,6 +656,7 @@ def get_task_types():
         return jsonify([task_type.serialize() for task_type in task_types]), 200
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
 
 @app.route('/add_task_type', methods=['POST'])
 def add_task_type():
@@ -673,6 +675,8 @@ def add_task_type():
     db.session.commit()
     return jsonify({'message': 'Task type added successfully'}), 201
 
+
+#Assign User to Task API
 @app.route('/assign_task', methods=['POST'])
 def assign_task():
     data = request.get_json()
@@ -693,6 +697,8 @@ def assign_task():
         db.session.rollback()
         return jsonify({'error': str(e)}), 500
 
+
+#Tasks API
 @app.route('/create_task', methods=['POST'])
 def create_task():
     try:
@@ -876,6 +882,7 @@ def get_task_stats():
         return jsonify({'error': str(e)}), 500
 
 
+#Task Comments API
 @app.route('/tasks/<int:task_id>/comments', methods=['GET'])
 def get_task_comments(task_id):
     try:
@@ -971,6 +978,8 @@ def add_task_comment(task_id):
         print("Error in POST /tasks/<task_id>/comments:", e)
         return jsonify({'error': str(e)}), 500
 
+
+#Messages API
 @app.route('/conversations/<int:user_id>', methods=['GET'])
 def get_user_conversations(user_id):
     try:
@@ -1102,6 +1111,8 @@ def send_message():
         return jsonify({'error': str(e)}), 500
     
 
+
+#Projects API
 @app.route('/projects/create', methods=['POST'])
 def create_project():
     try:
@@ -1115,6 +1126,7 @@ def create_project():
         start_date_str = data.get('start_date')
         end_date_str = data.get('end_date')
         status = data.get('status', 'Active')
+        task_ids = data.get('tasks', [])
 
         start_date = datetime.fromisoformat(start_date_str) if start_date_str else datetime.utcnow()
         end_date = datetime.fromisoformat(end_date_str) if end_date_str else None
@@ -1130,7 +1142,146 @@ def create_project():
         db.session.add(new_project)
         db.session.commit()
 
+        
+        if task_ids:
+            tasks_to_attach = Tasks.query.filter(Tasks.task_id.in_(task_ids)).all()
+            for task in tasks_to_attach:
+                task.project_id = new_project.project_id  
+            db.session.commit()
+
         return jsonify({'message': 'Project created successfully', 'project': new_project.serialize()}), 201
+
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/projects', methods=['GET'])
+def get_projects():
+    try:
+        projects = Projects.query.all()
+        project_list = []
+        for project in projects:
+            project_list.append({
+                "project_id": project.project_id,
+                "project_name": project.project_name,
+                "description": project.description,
+                "start_date": project.start_date.isoformat() if project.start_date else None,
+                "end_date": project.end_date.isoformat() if project.end_date else None,
+                "status": project.status,
+                "tasks": [
+                    {
+                        "task_id": t.task_id,
+                        "title": t.title,
+                        "task_type": t.task_type_id,
+                        "description": t.description,
+                        "status": t.status,
+                        "deadline": t.deadline.isoformat() if t.deadline else None
+                    }
+                    for t in project.tasks
+                ]
+            })
+        return jsonify(project_list), 200
+    except Exception as e:
+        print("Error in GET /projects:", e)
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/projects/fetch_project', methods=['GET'])
+def fetch_project():
+    try:
+        project_id = request.args.get('project_id')
+
+        if not project_id:
+            return jsonify({"error": "project_id is required"}), 400
+
+        project = Projects.query.get(project_id)
+        if not project:
+            return jsonify({"error": "Project not found"}), 404
+
+        project_data = {
+            "project_id": project.project_id,
+            "project_name": project.project_name,
+            "description": project.description,
+            "start_date": project.start_date.isoformat() if project.start_date else None,
+            "end_date": project.end_date.isoformat() if project.end_date else None,
+            "status": project.status,
+            "tasks": []
+        }
+  
+        for task in project.tasks:
+            project_data["tasks"].append({
+                "task_id": task.task_id,
+                "title": task.title,
+                "task_type": task.task_type_id,
+                "description": task.description,
+                "status": task.status,
+                "deadline": task.deadline.isoformat() if task.deadline else None
+            })
+
+        return jsonify(project_data), 200
+
+    except Exception as e:
+        print("Error in GET /projects/fetch_project:", e)
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/tasks/assign-multiple', methods=['PUT'])
+def assign_multiple_tasks():
+    try:
+        data = request.json
+        project_id = data.get("project_id")
+        task_ids = data.get("task_ids", [])
+
+        if not project_id:
+            return jsonify({"error": "project_id is required"}), 400
+
+        project = Projects.query.get(project_id)
+        if not project:
+            return jsonify({"error": "Project not found"}), 404
+
+ 
+        Tasks.query.filter(
+            Tasks.project_id == project_id,
+            ~Tasks.task_id.in_(task_ids)
+        ).update({Tasks.project_id: None}, synchronize_session=False)
+
+        if task_ids:
+            Tasks.query.filter(
+                Tasks.task_id.in_(task_ids)
+            ).update({Tasks.project_id: project_id}, synchronize_session=False)
+
+        db.session.commit()
+
+        return jsonify({"message": "Tasks updated successfully!"}), 200
+
+    except Exception as e:
+        print("Error:", e)
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/edit_project/<int:project_id>', methods=['PUT'])
+def update_project(project_id):
+    try:
+        data = request.get_json()
+
+        project = Projects.query.get(project_id)
+        if not project:
+            return jsonify({'error': 'Project not found'}), 404
+
+        
+        project.project_name = data.get('project_name', project.project_name)
+        project.description = data.get('description', project.description)
+        project.status = data.get('status', project.status)
+
+        start_date_str = data.get('start_date')
+        end_date_str = data.get('end_date')
+        if start_date_str:
+            project.start_date = datetime.fromisoformat(start_date_str)
+        if end_date_str:
+            project.end_date = datetime.fromisoformat(end_date_str)
+
+        db.session.commit()
+        return jsonify({'message': 'Project updated successfully'}), 200
 
     except Exception as e:
         db.session.rollback()
