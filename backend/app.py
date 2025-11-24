@@ -1159,7 +1159,31 @@ def create_project():
 @app.route('/projects', methods=['GET'])
 def get_projects():
     try:
-        projects = Projects.query.all()
+        user_type = request.args.get("user_type")
+        user_id = request.args.get("user_id")
+
+        if user_type in ["admin", "client"]:
+            projects = Projects.query.all()
+
+        elif user_type == "staff":
+            if not user_id:
+                return jsonify({"error": "user_id required for staff"}), 400
+
+            user_id = int(user_id)
+
+            projects = (
+                db.session.query(Projects)
+                .join(Tasks)                    
+                .join(TasksAssigned)            
+                .filter(TasksAssigned.user_id == user_id)
+                .distinct()
+                .all()
+            )
+
+        else:
+            return jsonify({"error": "Invalid user_type"}), 403
+
+        # Serialize output
         project_list = []
         for project in projects:
             project_list.append({
@@ -1181,49 +1205,15 @@ def get_projects():
                     for t in project.tasks
                 ]
             })
+
         return jsonify(project_list), 200
+
     except Exception as e:
         print("Error in GET /projects:", e)
         return jsonify({'error': str(e)}), 500
 
 
-@app.route('/projects/fetch_project', methods=['GET'])
-def fetch_project():
-    try:
-        project_id = request.args.get('project_id')
 
-        if not project_id:
-            return jsonify({"error": "project_id is required"}), 400
-
-        project = Projects.query.get(project_id)
-        if not project:
-            return jsonify({"error": "Project not found"}), 404
-
-        project_data = {
-            "project_id": project.project_id,
-            "project_name": project.project_name,
-            "description": project.description,
-            "start_date": project.start_date.isoformat() if project.start_date else None,
-            "end_date": project.end_date.isoformat() if project.end_date else None,
-            "status": project.status,
-            "tasks": []
-        }
-  
-        for task in project.tasks:
-            project_data["tasks"].append({
-                "task_id": task.task_id,
-                "title": task.title,
-                "task_type": task.task_type_id,
-                "description": task.description,
-                "status": task.status,
-                "deadline": task.deadline.isoformat() if task.deadline else None
-            })
-
-        return jsonify(project_data), 200
-
-    except Exception as e:
-        print("Error in GET /projects/fetch_project:", e)
-        return jsonify({'error': str(e)}), 500
 
 
 @app.route('/tasks/assign-multiple', methods=['PUT'])

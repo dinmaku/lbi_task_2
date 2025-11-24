@@ -39,7 +39,7 @@
                     <span class="text-blue-600 font-semibold">
                       {{ project.tasks.length }}
                     </span>
-                    tasks
+                    task/s
                   </p>
                 </div>
 
@@ -591,6 +591,12 @@ export default {
               this.showAlertMessage("error", "Project name is required!");
               return;
             }
+             const userType = localStorage.getItem('user_type');
+
+              if (userType === 'staff') {
+                this.showAlertMessage('error', 'You are not authorized to create a project.');
+                return;
+              }
             const payload = {
               ...this.newProject,
               start_date: new Date().toISOString(),
@@ -599,6 +605,8 @@ export default {
             };
 
             this.isSubmitting = true;
+
+            
 
             try {
               const token = sessionStorage.getItem('access_token');
@@ -645,28 +653,18 @@ export default {
           }
         },
 
-
-        async fetchProject(projectId) {
-          console.log("Fetching project ID:", projectId); 
-          if (!projectId) return; 
-
+       async fetchProjects() {
           try {
-            const response = await axios.get(
-              "http://localhost:5000/projects/fetch_project",
-              { params: { project_id: projectId } }
-            );
+            const userType = localStorage.getItem("user_type");
+            const userId = sessionStorage.getItem("user_id");
 
-            console.log("Project data:", response.data);
-            this.project = response.data;
-            console.log(this.projects);
-          } catch (error) {
-            console.error("Error fetching project:", error);
-          }
-        },
+            const response = await axios.get("http://localhost:5000/projects", {
+              params: {
+                user_type: userType,
+                user_id: userId
+              }
+            });
 
-        async fetchProjects() {
-          try {
-            const response = await axios.get("http://localhost:5000/projects");
             this.projects = response.data;
             console.log("Projects loaded:", this.projects);
           } catch (error) {
@@ -689,23 +687,30 @@ export default {
           },
 
          async assignTasksToProject() {
+          const userType = localStorage.getItem('user_type');
+
+              if (userType === 'staff') {
+                this.showAlertMessage('error', 'You are not authorized to add a task to project.');
+                return;
+              }
             if (!this.currentProjectId) return console.error("No project selected");
+            
 
             try {
-              await axios.put("http://localhost:5000/tasks/assign-multiple", {
-                project_id: this.currentProjectId,
-                task_ids: this.selectedTasks
-              });
-              
-              await this.fetchProjects();
-              this.addExistingTaskModal = false;
+                const response = await axios.put("http://localhost:5000/tasks/assign-multiple", {
+                  project_id: this.currentProjectId,
+                  task_ids: this.selectedTasks
+                });
 
-              await this.fetchProject(this.currentProjectId);
+                await this.fetchProjects();
+                await this.fetchTasks();
+                this.addExistingTaskModal = false;
 
-              this.showAlertMessage("success", "Tasks assigned successfully!");
-            } catch (err) {
-              this.showAlertMessage("error", "Error assigning tasks:");
-            }
+                this.showAlertMessage("success", "Tasks assigned successfully!");
+              } catch (err) {
+                console.error("Assign error:", err);
+                this.showAlertMessage("error", "Error assigning tasks:");
+              }
           },
 
         toggleExistingTask(projectId) {
@@ -738,6 +743,13 @@ export default {
         },
 
         async updateStatus() {
+          const userType = localStorage.getItem('user_type');
+
+              if (userType === 'staff') {
+                this.showAlertMessage('error', 'You are not authorized to change the status of the project.');
+                return;
+              }
+
           try {
             const response = await fetch(`http://localhost:5000/edit_project/${this.selectedProject.project_id}`, {
               method: 'PUT',
@@ -765,6 +777,13 @@ export default {
         },
 
         async updateProject() {
+          const userType = localStorage.getItem('user_type');
+
+              if (userType === 'staff') {
+                this.showAlertMessage('error', 'You are not authorized to update a project.');
+                return;
+              }
+
             try {
               const token = sessionStorage.getItem('access_token');
               if (!token) {
@@ -802,6 +821,7 @@ export default {
               }
 
               await this.fetchTasks();
+              await this.fetchProjects();
 
               this.projectDetailsModal = false;
               this.selectedProject = {
