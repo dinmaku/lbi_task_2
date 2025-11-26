@@ -14,11 +14,13 @@ import re
 import logging
 import uuid, os
 import traceback
+from flask_socketio import SocketIO, emit, join_room, leave_room
 
 
 
 app = Flask(__name__)
 CORS(app, supports_credentials=True, origins=["http://localhost:5173"])
+socketio = SocketIO(app, cors_allowed_origins="*")
 
 app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql+pg8000://postgres:1234@localhost/lbi_user_management'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
@@ -1277,7 +1279,38 @@ def update_project(project_id):
         db.session.rollback()
         return jsonify({'error': str(e)}), 500
 
-      
+
+# When a client joins a conversation room
+@socketio.on('join')
+def on_join(data):
+    conversation_id = data['conversation_id']
+    join_room(conversation_id)
+    print(f"User joined room {conversation_id}")
+
+# When a message is sent
+@socketio.on('send_message')
+def handle_send_message(data):
+    conversation_id = data['conversation_id']
+    sender_id = data['sender_id']
+    message_text = data['message']
+
+    # Save to DB (reuse your existing Message model)
+    new_message = Message(
+        conversation_id=conversation_id,
+        sender_id=sender_id,
+        message=message_text
+    )
+    db.session.add(new_message)
+    db.session.commit()
+
+    # Broadcast to everyone in the room
+    emit('new_message', {
+        'message_id': new_message.message_id,
+        'conversation_id': conversation_id,
+        'message': new_message.message,
+        'sender_id': sender_id,
+        'created_at': new_message.created_at.isoformat()
+    }, room=conversation_id)
 
 
 if __name__ == '__main__':
