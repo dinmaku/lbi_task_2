@@ -102,6 +102,7 @@
                 Log out
             </button>
 
+
         </div>
       </div>
     </div>
@@ -196,7 +197,6 @@
       </div>
 
 
-
       <!-- Status Confirmation Modal -->
         <div v-if="logoutModal" @click.self="closeLogoutConfirmModal" class="fixed inset-0 bg-gray-800/40 overflow-y-auto flex justify-center items-center z-50">
           <div class="bg-gray-100 p-5 rounded-lg shadow-lg w-[400px]">
@@ -222,8 +222,7 @@
     </div>
     
   </div>
-
-
+  
   
 </template>
 
@@ -348,6 +347,7 @@ export default {
 
           // 👇 Attach the conversation_id returned from the backend
           this.selectedUser.conversation_id = data.conversation_id;
+          this.socket.emit("join", { conversation_id: data.conversation_id });
 
           this.socket.emit("join", { conversation_id: data.conversation_id }); //~~~
 

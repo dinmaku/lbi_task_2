@@ -1280,21 +1280,20 @@ def update_project(project_id):
         return jsonify({'error': str(e)}), 500
 
 
-# When a client joins a conversation room
 @socketio.on('join')
 def on_join(data):
     conversation_id = data['conversation_id']
     join_room(conversation_id)
     print(f"User joined room {conversation_id}")
 
-# When a message is sent
+
 @socketio.on('send_message')
 def handle_send_message(data):
     conversation_id = data['conversation_id']
     sender_id = data['sender_id']
     message_text = data['message']
 
-    # Save to DB (reuse your existing Message model)
+   
     new_message = Message(
         conversation_id=conversation_id,
         sender_id=sender_id,
@@ -1303,7 +1302,7 @@ def handle_send_message(data):
     db.session.add(new_message)
     db.session.commit()
 
-    # Broadcast to everyone in the room
+   
     emit('new_message', {
         'message_id': new_message.message_id,
         'conversation_id': conversation_id,
@@ -1315,5 +1314,3 @@ def handle_send_message(data):
 
 if __name__ == '__main__':
     app.run(debug=True)
-    eventlet.monkey_patch()
-    socketio.run(app, host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
