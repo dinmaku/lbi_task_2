@@ -102,6 +102,7 @@
                 Log out
             </button>
 
+
         </div>
       </div>
     </div>
@@ -196,7 +197,6 @@
       </div>
 
 
-
       <!-- Status Confirmation Modal -->
         <div v-if="logoutModal" @click.self="closeLogoutConfirmModal" class="fixed inset-0 bg-gray-800/40 overflow-y-auto flex justify-center items-center z-50">
           <div class="bg-gray-100 p-5 rounded-lg shadow-lg w-[400px]">
@@ -222,13 +222,13 @@
     </div>
     
   </div>
-
-
+  
   
 </template>
 
 <script>
 import ManageUsers from './manage_users.vue';
+import { io } from "socket.io-client";
 
 
 export default {
@@ -267,6 +267,18 @@ export default {
 
       // ✅ Fetch all conversations for this user
       this.fetchConversations();
+
+      this.socket = io("http://localhost:5000");
+      this.socket.on("new_message", (message) => {
+        if (this.selectedUser && message.conversation_id === this.selectedUser.conversation_id) {
+          this.messages.push({
+            id: message.message_id,
+            text: message.message,
+            fromSelf: message.sender_id === this.currentUserId,
+            created_at: new Date(message.created_at)
+          });
+        }
+      });
     },
 
   methods: {
@@ -333,6 +345,7 @@ export default {
 
           // 👇 Attach the conversation_id returned from the backend
           this.selectedUser.conversation_id = data.conversation_id;
+          this.socket.emit("join", { conversation_id: data.conversation_id });
 
           console.log('✅ Using conversation ID:', data.conversation_id);
 
@@ -371,38 +384,20 @@ export default {
       },
 
     async sendMessage() {
-      if (!this.newMessage.trim() || !this.selectedUser) return;
+        if (!this.newMessage.trim() || !this.selectedUser) return;
 
-      const messageData = {
-        conversation_id: this.selectedUser.conversation_id,
-        sender_id: this.currentUserId,
-        message: this.newMessage,
-      };
+        const messageData = {
+          conversation_id: this.selectedUser.conversation_id,
+          sender_id: this.currentUserId,
+          message: this.newMessage,
+        };
 
-      try {
-        const res = await fetch('http://localhost:5000/messages', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(messageData),
-        });
+        // Emit for real-time broadcast + persistence
+        this.socket.emit("send_message", messageData);
 
-        const data = await res.json();
+        this.newMessage = "";
+      },
 
-        if (res.ok) {
-          this.messages.push({
-            id: data.message_id,
-            text: data.message,
-            fromSelf: true,
-            created_at: data.created_at,
-          });
-          this.newMessage = '';
-        } else {
-          console.error('Failed to send message:', data.error);
-        }
-      } catch (error) {
-        console.error('Error sending message:', error);
-      }
-    },
    
   async fetchUsers() {
       try {
