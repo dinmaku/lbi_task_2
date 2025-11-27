@@ -269,7 +269,8 @@ export default {
 
       // ✅ Fetch all conversations for this user
       this.fetchConversations();
-
+ 
+      //~
       this.socket = io("http://localhost:5000");
       this.socket.on("new_message", (message) => {
         if (this.selectedUser && message.conversation_id === this.selectedUser.conversation_id) {
