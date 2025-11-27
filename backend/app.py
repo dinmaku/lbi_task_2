@@ -1314,3 +1314,5 @@ def handle_send_message(data):
 
 if __name__ == '__main__':
     app.run(debug=True)
+    eventlet.monkey_patch()
+    socketio.run(app, host="0.0.0.0", port=int(os.getenv("PORT", 5000)))
